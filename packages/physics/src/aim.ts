@@ -55,6 +55,9 @@ export function netPullForHoop(
 /**
  * Sample aim-preview dots using the same integrator as flight.
  * Bank hits are flagged so the renderer can highlight them.
+ *
+ * Pitch parity: preview dots omit obstacle collision (see `collideObstacles`);
+ * only screen-edge banks are threaded into the orange trail.
  */
 export function predictPath(
   origin: Vec2,

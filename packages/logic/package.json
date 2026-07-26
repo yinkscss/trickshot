@@ -17,6 +17,7 @@
     "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@trickshot/physics": "*",
     "@trickshot/shared": "*"
   },
   "devDependencies": {
