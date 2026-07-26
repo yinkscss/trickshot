@@ -36,3 +36,29 @@ export {
   type Vec2,
   type WallObstacle,
 } from "./shot-layout.js";
+
+export {
+  applySlowDrop,
+  applyWideHoop,
+  powerupsAllowed,
+  type DropConstants,
+  type HoopLayout,
+  type PowerupModifiers,
+} from "./powerups.js";
+
+export {
+  buildRunSummary,
+  comboLabel,
+  comboMultiplier,
+  createScoreState,
+  dunkPoints,
+  DUNK_BASE_POINTS,
+  reduceScoreEvent,
+  shouldSpawnStar,
+  STAR_GUARANTEE_BELOW_SCORE,
+  STAR_POINTS,
+  STAR_SPAWN_PROBABILITY,
+  type ComboLabel,
+  type ScoreEvent,
+  type ScoreState,
+} from "./scoring.js";
