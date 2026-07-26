@@ -20,7 +20,7 @@ import {
   netPullForHoop,
   predictPath,
   rimHit,
-  stepProjectile,
+  stepProjectileSubsteps,
   throughHoop,
   type AimVector,
   type Hoop,
@@ -294,7 +294,7 @@ export class PlayScene extends Phaser.Scene {
     }
 
     if (this.runFsm.runState === "flying") {
-      stepProjectile(this.ball, dt, this.W);
+      stepProjectileSubsteps(this.ball, dt, this.W);
       if (this.source) rimHit(this.source, this.ball);
       if (this.target) rimHit(this.target, this.ball);
       collideObstacles(this.obstacles, this.ball, dt);

@@ -2,6 +2,7 @@
 export {
   BALL_RADIUS,
   FIXED_DT,
+  FLIGHT_EPSILON,
   G,
   MAX_POW,
   MIN_SHOT,
@@ -10,10 +11,12 @@ export {
   PREVIEW_STEPS,
   RIM_RX,
   RIM_RY,
+  SUBSTEP_EPSILON,
   WALL_REST,
   aimFrom,
   applyWallBounce,
   cloneProjectile,
+  collideScreenEdges,
   edgePad,
   hypot,
   maxPull,
@@ -28,6 +31,8 @@ export {
   type PredictDot,
   type Projectile,
   type Vec2,
+  type WallHitCallback,
+  type WallSide,
 } from "@trickshot/physics";
 
 export * from "./hoopCollision";
