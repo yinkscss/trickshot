@@ -73,3 +73,27 @@ Layouts use logical court pixels (Alpha default **390×780** portrait). Source s
 | ≥ 4 | 1 | 65% | “Hard”: taller peg (100px), larger bumper (r=24), wider offset |
 
 Per-shot RNG: `shotRng(mode, seed, score, side)` — same inputs → identical layout in Node and browser.
+
+## Scoring & combo (Alpha)
+
+Pitch-aligned dunk points, combo multipliers, and star economy — pure reducers for Sub D juice.
+
+### API
+
+- `createScoreState()` / `reduceScoreEvent(state, event)` — dunk / miss / star / continue
+- `comboLabel(chainLength)` → `null | "x2" | "x3" | "ON FIRE"`
+- `comboMultiplier` / `dunkPoints` — point math
+- `shouldSpawnStar(fromScore, rngUnit)` — pitch `starOn` (90% or score &lt; 2)
+- `buildRunSummary({ mode, scoreState, ... })` — maps to `@trickshot/shared` `RunSummary`
+- `applyWideHoop` / `applySlowDrop` — powerup stubs; tournament hard-disabled
+
+### Combo policy
+
+| Event | Chain | Points / stars |
+|-------|-------|----------------|
+| `dunk` | +1 | +`dunkPoints(chain)`; auto-star if `starActive` |
+| `miss` | reset 0 | preserved |
+| `acceptContinue` | reset 0 | preserved |
+| `collectStar` | — | +`STAR_POINTS`, +1 star |
+
+Thresholds: x2 @ 2, x3 @ 3, ON FIRE @ 4+ (multiplier caps at ×4).

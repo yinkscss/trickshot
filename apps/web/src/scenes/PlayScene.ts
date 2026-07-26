@@ -2,9 +2,14 @@ import Phaser from "phaser";
 import {
   RunFSM,
   allowsContinue,
+  createScoreState,
   dailySeedFromUtcDate,
   generateShotLayout,
+  reduceScoreEvent,
+  shotRng,
   type PhysicsIntent,
+  type ScoreState,
+  type Side,
 } from "@trickshot/logic";
 import { makeHoop } from "../game/layout";
 import {
@@ -58,6 +63,8 @@ export class PlayScene extends Phaser.Scene {
       : `casual-${Date.now()}`;
   private score = 0;
   private side = 1;
+  private scoreState: ScoreState = createScoreState();
+  private starPos: Vec2 | null = null;
 
   private source: Hoop | null = null;
   private target: Hoop | null = null;
@@ -164,6 +171,34 @@ export class PlayScene extends Phaser.Scene {
     this.transition = null;
     this.aimOrigin = { x: L.source.x, y: L.source.y - 1 };
     this.continueText.setVisible(false);
+    this.applyShotStar(fromScore);
+  }
+
+  /** Seeded star spawn + position for the current shot (logic-owned rules). */
+  private applyShotStar(fromScore: number): void {
+    const mode = this.runFsm.state.mode;
+    const seed =
+      mode === "daily" ? dailySeedFromUtcDate() : this.runSeed;
+    const side = this.side as Side;
+    const rng = shotRng(seed, fromScore, side, mode);
+    this.scoreState = reduceScoreEvent(this.scoreState, {
+      type: "prepareShot",
+      fromScore,
+      rngUnit: rng.next(),
+    });
+    if (!this.scoreState.starActive) {
+      this.starPos = null;
+      return;
+    }
+    const L = generateShotLayout({
+      side,
+      score: fromScore,
+      seed,
+      mode,
+      width: this.W,
+      height: this.H,
+    });
+    this.starPos = { ...L.star };
   }
 
   private applyRunResult(result: {
@@ -211,10 +246,22 @@ export class PlayScene extends Phaser.Scene {
       }
     }
     this.score = this.runFsm.state.score;
-    this.scoreText.setText(String(this.score));
+    this.scoreText.setText(String(this.scoreState.score));
+  }
+
+  private tryCollectStar(): void {
+    if (!this.scoreState.starActive || !this.starPos) return;
+    if (hypot(this.ball.x - this.starPos.x, this.ball.y - this.starPos.y) < 28) {
+      this.scoreState = reduceScoreEvent(this.scoreState, {
+        type: "collectStar",
+      });
+      this.starPos = null;
+      this.scoreText.setText(String(this.scoreState.score));
+    }
   }
 
   private dispatchMiss(): void {
+    this.scoreState = reduceScoreEvent(this.scoreState, { type: "miss" });
     this.dragging = false;
     this.dragPt = null;
     this.applyRunResult(this.runFsm.dispatch({ type: "outOfBounds" }));
@@ -228,6 +275,9 @@ export class PlayScene extends Phaser.Scene {
   private resetRun(): void {
     this.showHint = true;
     this.continueText.setText("TAP TO RETRY");
+    this.scoreState = reduceScoreEvent(this.scoreState, {
+      type: "acceptContinue",
+    });
     this.applyRunResult(this.runFsm.dispatch({ type: "acceptContinue" }));
   }
 
@@ -317,6 +367,7 @@ export class PlayScene extends Phaser.Scene {
       if (this.source) rimHit(this.source, this.ball);
       if (this.target) rimHit(this.target, this.ball);
       collideObstacles(this.obstacles, this.ball, dt);
+      this.tryCollectStar();
 
       if (this.target && throughHoop(this.target, this.ball)) {
         this.onScore(_time);
@@ -341,6 +392,8 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     this.applyRunResult(this.runFsm.dispatch({ type: "throughHoop" }, time));
+    this.scoreState = reduceScoreEvent(this.scoreState, { type: "dunk" });
+    this.scoreText.setText(String(this.scoreState.score));
   }
 
   private startTransition(): void {
@@ -380,6 +433,7 @@ export class PlayScene extends Phaser.Scene {
     this.aim = { x: 0, y: 0, pull: 0 };
     this.dragging = false;
     this.dragPt = null;
+    this.applyShotStar(this.runFsm.state.score);
   }
 
   private drawFrame(): void {
@@ -412,6 +466,10 @@ export class PlayScene extends Phaser.Scene {
 
     if (this.runFsm.runState === "aiming" && this.dragging) {
       this.drawAimDots(g);
+    }
+
+    if (this.scoreState.starActive && this.starPos) {
+      this.drawStar(g, this.starPos.x, this.starPos.y);
     }
 
     this.drawBall(g, this.ball.x, this.ball.y);
@@ -502,6 +560,18 @@ export class PlayScene extends Phaser.Scene {
       if (d.bounced) g.fillStyle(0x4ecbff, 0.95 * d.fade);
       else g.fillStyle(0xff4d1a, 0.95 * d.fade);
       g.fillCircle(d.x, d.y, r);
+    }
+  }
+
+  private drawStar(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+    const r = 10;
+    g.fillStyle(0xffd60a, 1);
+    g.fillCircle(x, y, r * 0.45);
+    for (let i = 0; i < 5; i++) {
+      const a = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+      const px = x + Math.cos(a) * r;
+      const py = y + Math.sin(a) * r;
+      g.fillTriangle(x, y, px, py, px + 3, py + 3);
     }
   }
 
