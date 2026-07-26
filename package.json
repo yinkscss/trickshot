@@ -10,11 +10,13 @@
   "scripts": {
     "dev:web": "npm run dev -w @trickshot/web",
     "dev:api": "npm run dev -w @trickshot/api",
-    "build": "npm run build -w @trickshot/shared && npm run build -w @trickshot/web && npm run build -w @trickshot/api",
+    "supabase:start": "npx supabase start",
+    "supabase:status": "npx supabase status",
+    "build": "npm run build -w @trickshot/shared && npm run build -w @trickshot/web",
     "build:web": "npm run build -w @trickshot/shared && npm run build -w @trickshot/web",
     "build:api": "npm run build -w @trickshot/shared && npm run build -w @trickshot/api",
-    "typecheck": "npm run typecheck -w @trickshot/shared && npm run typecheck -w @trickshot/web && npm run typecheck -w @trickshot/api",
-    "test": "npm run test -w @trickshot/shared --if-present && npm run test -w @trickshot/web --if-present && npm run test -w @trickshot/api --if-present",
+    "typecheck": "npm run typecheck -w @trickshot/shared && npm run typecheck -w @trickshot/web",
+    "test": "npm run test -w @trickshot/shared --if-present && npm run test -w @trickshot/web --if-present",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts"
   },

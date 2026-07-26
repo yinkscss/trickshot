@@ -18,7 +18,7 @@ Do not change stack IDs without an explicit lock review (update `STACK_LOCK.md` 
 | `wallet=magic` | Magic.link |
 | `contracts=foundry` | Solidity + Foundry + OpenZeppelin |
 | `indexing=goldsky` | Goldsky (Beta+) |
-| `backend=node_pg_redis` | Node/TS + Postgres + Redis |
+| `backend=supabase` | Supabase (Postgres + Edge Functions) |
 | `hosting=aws_cf` | AWS/GCP + Cloudflare |
 | `platforms=pwa_first` | PWA / MiniPay first |
 | `monetization=continue_powerup` | Continues + powerups first |
@@ -31,6 +31,7 @@ Do not change stack IDs without an explicit lock review (update `STACK_LOCK.md` 
 - Phaser Matter / Arcade as gameplay physics authority
 - Non-Celo settlement for Alpha money paths
 - Replacing Magic with WalletConnect-primary onboarding for v1
+- Replacing Supabase with a custom Node/Postgres/Redis API
 - Loot-box / RNG paid rewards
 - Tournament continues (unless counsel + new lock)
 

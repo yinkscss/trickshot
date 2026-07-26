@@ -129,7 +129,7 @@ Canonical freeze: [`docs/STACK_LOCK.md`](./STACK_LOCK.md). Summary:
 | Tournament escrow/payout | Purpose-built escrow: entry fees, 85%/15% split, on-chain payout events | (contracts) |
 | Game client | Phaser 3 PWA / browser-first; optional Capacitor later | `client=phaser_pwa` |
 | Physics / aim | Custom 2D integrator (pitch parity — not Matter/Arcade as authority) | `physics=custom_2d` |
-| Backend | Node.js/TypeScript, Postgres, Redis | `backend=node_pg_redis` |
+| Backend | Supabase (Postgres + Edge Functions + JS client) | `backend=supabase` |
 | Hosting | AWS/GCP + Cloudflare | `hosting=aws_cf` |
 | Launch platforms | PWA / MiniPay web first | `platforms=pwa_first` |
 | Monetization priority (v1) | Continues + powerups first | `monetization=continue_powerup` |
@@ -141,6 +141,7 @@ Canonical freeze: [`docs/STACK_LOCK.md`](./STACK_LOCK.md). Summary:
 - Phaser Matter / Arcade Physics as the gameplay authority (rendering OK; integrator owns aim/flight)
 - Non-Celo L1/L2 settlement for Alpha money paths
 - Replacing Magic with a WalletConnect-primary onboarding for v1
+- Replacing Supabase with a custom Node/Postgres/Redis stack without a lock review
 - Loot-box / RNG paid rewards
 - Re-enabling tournament continues without legal + lock update
 
