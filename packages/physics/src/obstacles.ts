@@ -1,18 +1,9 @@
-import {
-  BALL_RADIUS,
-  clamp,
-  hypot,
-  type Projectile,
-} from "@trickshot/physics";
-import {
-  buildObstacles,
-  type BumperObstacle,
-  type Obstacle,
-  type WallObstacle,
-} from "@trickshot/logic";
+import { BALL_RADIUS } from "./constants.js";
+import { clamp, hypot } from "./math.js";
+import type { BumperObstacle, Obstacle, Projectile } from "./types.js";
 
-export type { BumperObstacle, Obstacle, WallObstacle };
-export { buildObstacles };
+/** Alpha invariant: logic spawns zero or one obstacle per shot. */
+export const MAX_LIVE_OBSTACLES = 1;
 
 /** Pitch `segmentBounce` — shared by wall peg (and future segment obstacles). */
 export function segmentBounce(
@@ -58,6 +49,12 @@ export function collideObstacles(
   dt: number,
   ballRadius = BALL_RADIUS,
 ): void {
+  if (obstacles.length > MAX_LIVE_OBSTACLES) {
+    throw new Error(
+      `collideObstacles: expected at most ${MAX_LIVE_OBSTACLES} obstacle, got ${obstacles.length}`,
+    );
+  }
+
   for (const o of obstacles) {
     if (o.type === "wall") {
       segmentBounce(

@@ -38,6 +38,24 @@ export interface PredictDot {
 
 export type WallSide = "left" | "right";
 
+export type WallObstacle = {
+  type: "wall";
+  x: number;
+  y: number;
+  h: number;
+  w: number;
+};
+
+export type BumperObstacle = {
+  type: "bumper";
+  x: number;
+  y: number;
+  r: number;
+  pulse: number;
+};
+
+export type Obstacle = WallObstacle | BumperObstacle;
+
 /** Optional FX hook — flight may emit particles; preview must omit this. */
 export type WallHitCallback = (side: WallSide, x: number, y: number) => void;
 

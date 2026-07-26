@@ -40,10 +40,15 @@ All positions and velocities are **world pixels** — the same space Phaser uses
 | `integrate` | `stepProjectile`, `stepProjectileSubsteps`, `cloneProjectile` |
 | `walls` | `applyWallBounce`, `collideScreenEdges`, `edgePad` |
 | `aim` | `aimFrom`, `netPullForHoop`, `predictPath` |
+| `obstacles` | `collideObstacles`, `segmentBounce`, `MAX_LIVE_OBSTACLES` |
 | `constants` | `G`, `FIXED_DT`, `BALL_RADIUS`, … |
-| `types` | `Projectile`, `Vec2`, `Hoop`, … |
+| `types` | `Projectile`, `Vec2`, `Hoop`, `Obstacle`, … |
 
-Obstacles and hoop collision remain in `apps/web` until #18/#19.
+Obstacle collision (wall peg + bumper disc) lives here for Node replay (#18). Hoop/rim collision remains in `apps/web` until #19.
+
+## Aim preview vs obstacles
+
+Pitch `predictDots` uses the same integrator as flight but **does not** call `collideObstacles`. `predictPath` matches that behavior — screen-edge banks only. Flight applies `collideObstacles` after each step in the web client.
 
 ## Hybrid replay (#8)
 
@@ -53,19 +58,23 @@ Server replay will import this package in Node (no browser):
 import {
   aimFrom,
   cloneProjectile,
+  collideObstacles,
   FIXED_DT,
   stepProjectile,
   stepProjectileSubsteps,
+  type Obstacle,
 } from "@trickshot/physics";
 
 // 1. Reconstruct launch velocity from logged aim input
 const aim = aimFrom(origin, finger, worldWidth, worldHeight);
 const ball = cloneProjectile({ x: origin.x, y: origin.y, vx: aim.x, vy: aim.y });
+const obstacles: Obstacle[] = []; // from logged shot layout
 
 // 2. Step with fixed sub-steps for determinism
 for (const frameDt of inputLog.frameDts) {
   stepProjectileSubsteps(ball, frameDt, worldWidth);
-  // obstacle / rim hooks stay in web until #18/#19
+  collideObstacles(obstacles, ball, frameDt);
+  // rim / through-hoop hooks stay in web until #19
 }
 ```
 

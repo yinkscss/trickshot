@@ -1,5 +1,8 @@
 import type { GameMode } from "@trickshot/shared";
+import type { BumperObstacle, Obstacle, WallObstacle } from "@trickshot/physics";
 import { createRng, type Rng } from "./rng.js";
+
+export type { BumperObstacle, Obstacle, WallObstacle };
 
 /** Zigzag lane side: source low on `side`, goal high on the opposite. */
 export type Side = -1 | 1;
@@ -14,24 +17,6 @@ export interface HoopPose {
   y: number;
   ang: number;
 }
-
-export type WallObstacle = {
-  type: "wall";
-  x: number;
-  y: number;
-  h: number;
-  w: number;
-};
-
-export type BumperObstacle = {
-  type: "bumper";
-  x: number;
-  y: number;
-  r: number;
-  pulse: number;
-};
-
-export type Obstacle = WallObstacle | BumperObstacle;
 
 export interface ShotLayout {
   source: HoopPose;
