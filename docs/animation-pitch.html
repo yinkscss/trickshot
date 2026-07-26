@@ -422,20 +422,8 @@
       });
     }
 
-    // Extra spinner on high chains
-    if (hard && Math.random() < 0.55) {
-      list.push({
-        type: "spinner",
-        x: midX + rand(-40, 40),
-        y: midY - rand(30, 60),
-        len: rand(40, 60),
-        thick: 7,
-        ang: rand(0, Math.PI),
-        spd: rand(2.2, 3.4) * (Math.random() < 0.5 ? -1 : 1),
-      });
-    }
-
-    return list;
+    // Exactly one obstacle per shot — never stack extras
+    return list.slice(0, 1);
   }
 
   function reset() {
