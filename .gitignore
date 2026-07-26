@@ -41,3 +41,4 @@ contracts/broadcast/
 .vercel
 .vite/
 .worktrees/
+.env*
