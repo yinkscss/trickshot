@@ -23,5 +23,5 @@ npx serve .
 ## Product snapshot
 
 - **Core loop:** drag-to-aim → release → swish through next hoop → collect stars → hoop teleports → chain multiplier
-- **Rails:** Celo L2, Magic.link wallets, Goldsky indexing, Unity client + PWA checkout
+- **Rails:** Celo L2, Magic.link wallets, Goldsky indexing, web-based PWA client
 - **Status:** Draft PRD v1.0 (July 26, 2026)

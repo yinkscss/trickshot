@@ -108,7 +108,7 @@ Unchanged from the Fruit Slash PRD's stack, since both games share the same Celo
 | On-chain data indexing | Goldsky (Subgraphs + Mirror) |
 | Smart contracts | Solidity, Foundry, OpenZeppelin |
 | Tournament escrow/payout | Purpose-built escrow contract: collects entry fees, holds prize pool, splits 85%/15% on settlement, publishes payout on-chain |
-| Game client | Unity (native) + PWA (web checkout for continues, powerups, tournament entry) |
+| Game client | Web-based (Phaser 3 PWA / browser-first); optional Capacitor wrap later for stores |
 | Backend | Node.js/TypeScript, Postgres, Redis |
 | Hosting | AWS/GCP + Cloudflare |
 

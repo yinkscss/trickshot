@@ -185,19 +185,19 @@
   </div>
 <script>
 (() => {
-  const STORAGE_KEY = "trickshot-stack-answers";
+  const STORAGE_KEY = "trickshot-stack-answers-v2";
 
   const QUESTIONS = [
     {
       id: "client",
       title: "Game client",
-      hint: "Where the core loop ships for players.",
-      prd: "unity_pwa",
+      hint: "Web-based game — browser / PWA first (not a native Unity title).",
+      prd: "phaser_pwa",
       options: [
-        { id: "unity_pwa", label: "Unity (native) + PWA checkout", note: "PRD default — Unity game; web for continues/powerups/entries" },
-        { id: "phaser_pwa", label: "Phaser 3 PWA / Capacitor", note: "Web-first hypercasual; wrap for stores" },
-        { id: "pixi", label: "PixiJS + custom physics", note: "Closest to current HTML pitch canvas" },
-        { id: "cocos", label: "Cocos Creator", note: "2D mobile-first" },
+        { id: "phaser_pwa", label: "Phaser 3 PWA (web-first)", note: "Default — browser + installable PWA; optional Capacitor wrap later" },
+        { id: "pixi", label: "PixiJS + custom loop", note: "Closest to current HTML pitch canvas" },
+        { id: "three_canvas", label: "Plain Canvas / custom engine", note: "Minimal deps; evolve the playable pitch" },
+        { id: "unity_webgl", label: "Unity WebGL", note: "Only if you later need Unity — still ships as web" },
       ],
     },
     {
@@ -207,8 +207,8 @@
       prd: "custom_2d",
       options: [
         { id: "custom_2d", label: "Custom 2D integrator", note: "Like the playable pitch — full control of net + dots" },
-        { id: "unity_2d", label: "Unity Rigidbody2D", note: "If client is Unity" },
-        { id: "matter", label: "Matter.js / Planck", note: "If web client" },
+        { id: "matter", label: "Matter.js / Planck", note: "Web physics lib under Phaser/Pixi" },
+        { id: "phaser_arcade", label: "Phaser Arcade / Matter plugin", note: "If client is Phaser" },
       ],
     },
     {
@@ -283,11 +283,11 @@
       id: "platforms",
       title: "Launch platforms",
       hint: "Where Alpha/Beta users play.",
-      prd: "ios_android_pwa",
+      prd: "pwa_first",
       options: [
-        { id: "ios_android_pwa", label: "iOS + Android + PWA", note: "Native feel + web checkout" },
-        { id: "pwa_first", label: "PWA / MiniPay web first", note: "Skip stores until PMF" },
-        { id: "android_first", label: "Android first", note: "Emerging markets focus" },
+        { id: "pwa_first", label: "PWA / MiniPay web first", note: "Default — browser + MiniPay; stores only after PMF" },
+        { id: "ios_android_wrap", label: "Web + Capacitor store wraps", note: "Same web build in App Store / Play" },
+        { id: "android_first", label: "Android WebView / PWA first", note: "Emerging markets focus" },
       ],
     },
     {
@@ -364,7 +364,7 @@
     const missing = QUESTIONS.filter((q) => !answers[q.id]).map((q) => q.title);
     const lines = [];
 
-    lines.push("You are implementing Trick Shot — a precision chain-hoop arcade game on Celo.");
+    lines.push("You are implementing Trick Shot — a web-based precision chain-hoop arcade game on Celo (browser/PWA first).");
     lines.push("");
     lines.push("## Locked stack & product decisions");
     if (!answered.length) {
