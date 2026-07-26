@@ -58,6 +58,7 @@ npm run contracts:test
 | Artifact | Link |
 |---|---|
 | Stack lock | [docs/STACK_LOCK.md](docs/STACK_LOCK.md) |
+| Orchestrator gameplay prompt pack | [docs/gameplay-prompt-pack.html](docs/gameplay-prompt-pack.html) |
 | HTML PRD | [docs/prd.html](docs/prd.html) |
 | Playable gameplay pitch | [docs/animation-pitch.html](docs/animation-pitch.html) |
 | Roadmap | [docs/roadmap.html](docs/roadmap.html) |
