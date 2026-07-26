@@ -31,6 +31,7 @@ export interface PitchDrawState {
   stars: number;
   combo: number;
   safeTop: number;
+  safeBottom: number;
   ball: { x: number; y: number };
   source: PitchHoop | null;
   target: PitchHoop | null;
@@ -546,9 +547,11 @@ function drawHint(ctx: CanvasRenderingContext2D, state: PitchDrawState): void {
 
 function drawHUD(ctx: CanvasRenderingContext2D, state: PitchDrawState): void {
   const top = 26 + state.safeTop;
+  // Pause — bottom-left (keeps top-left clear for mode chip / combo)
+  const pauseY = state.H - 36 - Math.max(16, state.safeBottom);
   ctx.fillStyle = "#a4a8b0";
-  ctx.fillRect(20, top, 5, 20);
-  ctx.fillRect(30, top, 5, 20);
+  ctx.fillRect(20, pauseY, 5, 20);
+  ctx.fillRect(30, pauseY, 5, 20);
 
   ctx.font = `900 ${Math.floor(state.W * 0.38)}px Nunito, sans-serif`;
   ctx.textAlign = "center";
@@ -556,6 +559,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: PitchDrawState): void {
   ctx.fillStyle = "rgba(110,114,124,0.16)";
   ctx.fillText(String(state.score), state.W / 2, state.H * 0.22);
 
+  // Single top-right star counter (no duplicate DOM chip beneath)
   ctx.font = "800 22px Nunito, sans-serif";
   ctx.fillStyle = "#555964";
   ctx.textAlign = "right";
@@ -567,7 +571,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: PitchDrawState): void {
     ctx.font = "900 14px Nunito, sans-serif";
     ctx.textAlign = "left";
     ctx.fillStyle = ORANGE;
-    ctx.fillText(state.comboChip, 48, top + 14);
+    ctx.fillText(state.comboChip, 20, top + 14);
   }
 }
 
@@ -720,10 +724,11 @@ export function drawPitchFrame(
     }
 
     if (state.source) {
+      // No aim-drag net stretch / yank diamonds — only rimHit wobble when the ball
+      // banks into the net (light settle). Aim still uses rubber-band + predict dots.
       drawHoop(ctx, state.source, GREY, {
         withBall: state.mode === "aim",
-        pullNet: state.mode === "aim" && state.drag,
-        pull: state.sourcePull ?? { lx: 0, ly: 0, amt: 0 },
+        pullNet: false,
         ballX: state.ball.x,
         ballY: state.ball.y,
         timeMs: state.timeMs,

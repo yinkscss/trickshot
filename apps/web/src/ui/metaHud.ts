@@ -19,7 +19,6 @@ export class MetaHud {
   private modeEl: HTMLDivElement;
   private continueEl: HTMLDivElement;
   private summaryEl: HTMLDivElement;
-  private starsEl: HTMLDivElement;
   private modeLabelEl: HTMLDivElement;
   private cbs: MetaHudCallbacks;
 
@@ -30,7 +29,6 @@ export class MetaHud {
     this.root.innerHTML = `
       <div class="meta-chip-row">
         <div class="meta-chip" id="meta-mode-label">CASUAL</div>
-        <div class="meta-chip meta-stars" id="meta-stars">★ 0</div>
       </div>
       <div class="meta-panel" id="meta-mode" hidden>
         <h2>PLAY</h2>
@@ -59,7 +57,6 @@ export class MetaHud {
     this.modeEl = this.root.querySelector("#meta-mode")!;
     this.continueEl = this.root.querySelector("#meta-continue")!;
     this.summaryEl = this.root.querySelector("#meta-summary")!;
-    this.starsEl = this.root.querySelector("#meta-stars")!;
     this.modeLabelEl = this.root.querySelector("#meta-mode-label")!;
 
     this.modeEl.querySelectorAll("[data-mode]").forEach((btn) => {
@@ -82,9 +79,8 @@ export class MetaHud {
     });
   }
 
-  setStars(n: number): void {
-    this.starsEl.textContent = `★ ${n}`;
-  }
+  /** Stars are drawn on the canvas HUD — DOM chip removed to avoid a duplicate. */
+  setStars(_n: number): void {}
 
   setModeLabel(mode: GameMode): void {
     this.modeLabelEl.textContent = mode.toUpperCase();

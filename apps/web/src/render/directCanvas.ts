@@ -63,6 +63,16 @@ export function safeTopInset(): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+export function safeBottomInset(): number {
+  if (typeof document === "undefined") return 0;
+  const el =
+    document.getElementById("phone") ?? document.getElementById("game");
+  if (!el) return 0;
+  const pad = getComputedStyle(el).paddingBottom;
+  const n = parseFloat(pad);
+  return Number.isFinite(n) ? n : 0;
+}
+
 /** Map pointer client coords → logical court pixels. */
 export function clientToCourt(
   canvas: HTMLCanvasElement,

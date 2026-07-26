@@ -14,6 +14,7 @@ export {
   DirectCanvasRenderer,
   clientToCourt,
   safeTopInset,
+  safeBottomInset,
 } from "./directCanvas";
 export {
   drawPitchFrame,
