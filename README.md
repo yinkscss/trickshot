@@ -4,6 +4,15 @@ Precision chain-hoop arcade game on **Celo** — drag, release, chain the dunks.
 
 **Stack:** locked in [docs/STACK_LOCK.md](docs/STACK_LOCK.md) · **Phase:** Alpha (roadmap)
 
+> **Stack authority:** `docs/STACK_LOCK.md` is canonical. If the PRD, roadmap, or a PR disagrees with the lock, **the lock wins**. Do not change stack IDs without a new lock review.
+
+## Contributing (stack)
+
+- Honor lock IDs: `client=phaser_pwa`, `physics=custom_2d`, `chain=celo`, `wallet=magic`, `contracts=foundry`, `indexing=goldsky`, `backend=node_pg_redis`, `hosting=aws_cf`, `platforms=pwa_first`, `monetization=continue_powerup`, `anticheat=hybrid`, `legal=no_continue_tourney`.
+- **Out of scope without a lock review:** Unity primary client, Matter/Arcade as physics authority, non-Celo settlement, Magic replacement for v1, loot-box RNG, re-enabling tournament continues.
+- Alpha testnet: **Celo Sepolia** `11142220`.
+- Prefer surgical PRs that match the [playable pitch](docs/animation-pitch.html) feel before adding features.
+
 ## Monorepo
 
 | Path | Role |

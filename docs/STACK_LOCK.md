@@ -23,11 +23,22 @@ Do not silently change these choices. Alpha+ engineering must follow this docume
 | Score authority | Client play + server replay checks | `anticheat=hybrid` |
 | Tournament legal | No continues in paid tournaments | `legal=no_continue_tourney` |
 
-## Product overrides vs PRD draft
+## Product rules (aligned with PRD)
 
-- **Continues in paid tournaments:** STACK_LOCK wins — **disabled** (`legal=no_continue_tourney`). PRD §6.3 continue-penalty language is superseded until legal re-opens it.
-- **Powerups in tournament mode:** remain banned (PRD + lock).
+- **Continues in paid tournaments:** **disabled** (`legal=no_continue_tourney`). Continues remain the primary conversion in casual/daily.
+- **Powerups in tournament mode:** banned.
 - **No loot-box RNG.** Prefer stablecoin micro-tx (cUSD/USDC).
+- **Authority:** if any doc disagrees with this file, **this file wins**.
+
+## Out-of-scope stack swaps
+
+Require a new lock review — do not land in PRs:
+
+- Unity (or other native) as the primary client
+- Phaser Matter / Arcade Physics as gameplay authority
+- Non-Celo L1/L2 settlement for Alpha money paths
+- WalletConnect-primary onboarding replacing Magic for v1
+- Re-enabling tournament continues without counsel + lock update
 
 ## Network targets (Alpha)
 
