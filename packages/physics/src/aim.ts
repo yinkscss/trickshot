@@ -3,10 +3,10 @@ import {
   PREVIEW_DT,
   PREVIEW_MAX_DOTS,
   PREVIEW_STEPS,
-} from "./constants";
-import { clamp, hypot, maxPull } from "./math";
-import { stepProjectile } from "./integrate";
-import type { AimVector, Hoop, NetPull, PredictDot, Vec2 } from "./types";
+} from "./constants.js";
+import { clamp, hypot, maxPull } from "./math.js";
+import { stepProjectile } from "./integrate.js";
+import type { AimVector, Hoop, NetPull, PredictDot, Vec2 } from "./types.js";
 
 /** Slingshot: velocity opposite the drag, from fixed hoop origin */
 export function aimFrom(

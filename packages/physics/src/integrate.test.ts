@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { aimFrom, predictPath } from "./aim";
-import { G, PREVIEW_DT, WALL_REST } from "./constants";
-import { cloneProjectile, stepProjectile } from "./integrate";
-import { applyWallBounce, edgePad } from "./walls";
+import { aimFrom, predictPath } from "./aim.js";
+import { FIXED_DT, G, PREVIEW_DT, WALL_REST } from "./constants.js";
+import {
+  cloneProjectile,
+  stepProjectile,
+  stepProjectileSubsteps,
+} from "./integrate.js";
+import { applyWallBounce, edgePad } from "./walls.js";
 
 describe("applyWallBounce", () => {
   it("reflects left wall with WALL_REST", () => {
@@ -27,12 +31,29 @@ describe("applyWallBounce", () => {
 });
 
 describe("stepProjectile", () => {
-  it("applies gravity each step", () => {
+  it("applies gravity each step (free fall)", () => {
     const p = { x: 100, y: 100, vx: 0, vy: 0 };
     const dt = 1 / 60;
     stepProjectile(p, dt, 390);
     assert.ok(Math.abs(p.vy - G * dt) < 1e-9);
     assert.ok(Math.abs(p.y - (100 + G * dt * dt)) < 1e-6);
+  });
+});
+
+describe("stepProjectileSubsteps", () => {
+  it("matches repeated fixed steps for the same frame duration", () => {
+    const W = 390;
+    const frameDt = 1 / 60;
+    const a = { x: 86, y: 545, vx: -900, vy: -1100 };
+    const b = cloneProjectile(a);
+    stepProjectileSubsteps(a, frameDt, W);
+    for (let i = 0; i < Math.round(frameDt / FIXED_DT); i++) {
+      stepProjectile(b, FIXED_DT, W);
+    }
+    assert.ok(Math.abs(a.x - b.x) < 1e-9);
+    assert.ok(Math.abs(a.y - b.y) < 1e-9);
+    assert.ok(Math.abs(a.vx - b.vx) < 1e-9);
+    assert.ok(Math.abs(a.vy - b.vy) < 1e-9);
   });
 });
 
@@ -47,6 +68,32 @@ describe("preview / flight determinism", () => {
       dots.some((d) => d.bounced),
       "expected a bank highlight in preview",
     );
+  });
+
+  it("predictPath positions match stepped flight at each sample", () => {
+    const W = 390;
+    const H = 780;
+    const origin = { x: W * 0.22, y: H * 0.7 };
+    const vx = -900;
+    const vy = -1100;
+    const dots = predictPath(origin, vx, vy, W, H);
+
+    const flight = { x: origin.x, y: origin.y, vx, vy };
+    let drawn = 0;
+    for (let i = 0; i < 90; i++) {
+      const bounced = stepProjectile(flight, PREVIEW_DT, W);
+      if (i % 3 !== 0 && !bounced) continue;
+      const dot = dots[drawn];
+      if (!dot) break;
+      assert.ok(
+        Math.abs(dot.x - flight.x) < 1e-9 && Math.abs(dot.y - flight.y) < 1e-9,
+        `preview dot ${drawn} diverged at step ${i}`,
+      );
+      assert.equal(dot.bounced, bounced);
+      drawn++;
+      if (flight.y > H + 40 || flight.y < -60 || drawn > 28) break;
+    }
+    assert.equal(drawn, dots.length);
   });
 
   it("identical clones stay in lockstep through the integrator", () => {

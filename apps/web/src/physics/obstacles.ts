@@ -1,6 +1,9 @@
-import { BALL_RADIUS } from "./constants";
-import { clamp, hypot } from "./math";
-import type { Projectile } from "./types";
+import {
+  BALL_RADIUS,
+  clamp,
+  hypot,
+  type Projectile,
+} from "@trickshot/physics";
 
 /** Alpha live types — wall peg + bumper disc (pitch post-launch roster stays out). */
 export type WallObstacle = {

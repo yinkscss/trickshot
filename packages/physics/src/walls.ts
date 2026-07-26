@@ -1,5 +1,5 @@
-import { BALL_RADIUS, WALL_REST } from "./constants";
-import type { Projectile } from "./types";
+import { BALL_RADIUS, WALL_REST } from "./constants.js";
+import type { Projectile } from "./types.js";
 
 export function edgePad(ballRadius = BALL_RADIUS): number {
   return ballRadius + 3;
