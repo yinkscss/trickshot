@@ -1,6 +1,12 @@
-import { BALL_RADIUS, RIM_RX, RIM_RY } from "./constants";
-import { hypot } from "./math";
-import type { Hoop, Projectile, Vec2 } from "./types";
+import {
+  BALL_RADIUS,
+  RIM_RX,
+  RIM_RY,
+  hypot,
+  type Hoop,
+  type Projectile,
+  type Vec2,
+} from "@trickshot/physics";
 
 function local(h: Hoop, x: number, y: number): Vec2 {
   const dx = x - h.x;
