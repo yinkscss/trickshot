@@ -1,5 +1,7 @@
 /** Shared constants & types — stack lock: docs/STACK_LOCK.md */
 
+import type { GameMode, InputLog } from "./input-log.js";
+
 export const CELO_SEPOLIA_CHAIN_ID = 11142220;
 export const CELO_MAINNET_CHAIN_ID = 42220;
 
@@ -12,7 +14,24 @@ export const TOURNAMENT_ALLOWS_CONTINUES = false;
 /** Locked: powerups banned in tournament mode */
 export const TOURNAMENT_ALLOWS_POWERUPS = false;
 
-export type GameMode = "casual" | "daily" | "tournament";
+export type { GameMode } from "./input-log.js";
+export {
+  INPUT_LOG_MAX_BYTES,
+  INPUT_LOG_MAX_FRAMES,
+  INPUT_LOG_VERSION,
+  deserializeInputLog,
+  inputLogFrameSchema,
+  inputLogFrameTypeSchema,
+  inputLogSchema,
+  parseInputLog,
+  serializeInputLog,
+  validateInputLog,
+  type InputLog,
+  type InputLogFrame,
+  type InputLogFrameType,
+  type InputLogValidationError,
+  type InputLogValidationResult,
+} from "./input-log.js";
 
 export interface RunSummary {
   mode: GameMode;
@@ -23,6 +42,6 @@ export interface RunSummary {
   continuesUsed: number;
   powerupsUsed: string[];
   seed: string;
-  /** Opaque client input log for hybrid server replay (Alpha+) */
-  inputLog?: unknown;
+  /** Client input log for hybrid server replay (Alpha+) */
+  inputLog?: InputLog;
 }
