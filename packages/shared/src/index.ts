@@ -18,6 +18,8 @@ export interface RunSummary {
   mode: GameMode;
   chainLength: number;
   score: number;
+  /** Soft-currency stars collected this run */
+  stars: number;
   continuesUsed: number;
   powerupsUsed: string[];
   seed: string;
