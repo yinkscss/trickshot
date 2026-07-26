@@ -106,7 +106,7 @@
     <aside class="side">
       <div class="tag">Playable pitch</div>
       <h1>TRICK <span>SHOT</span></h1>
-      <p>Always climbs <strong style="color:#e8ebf2">up</strong>: ball net below, goal net above. Drag opposite, release, chain through obstacles.</p>
+      <p>Zigzag climb like Dunk Shot: ball net <strong style="color:#e8ebf2">low on one side</strong>, goal <strong style="color:#e8ebf2">high on the other</strong>. Screen edges bounce. Drag, release, chain.</p>
       <ol>
         <li><strong>Drag</strong> the ball to aim.</li>
         <li><strong>Thread</strong> obstacles with the orange dots.</li>
@@ -179,6 +179,7 @@
     contA: 0,
     showHint: true,
     scoredAt: 0,
+    side: 1, // 1 = source on left this shot; -1 = source on right
   };
 
   function resize() {
@@ -199,33 +200,32 @@
     return { x, y, ang, wobble: 0 };
   }
 
-  // ——— ALWAYS upward: source below, target above (never side-by-side) ———
+  // ——— Dunk Shot lane: source low on one side, target high on the OTHER side ———
   function place(fromScore) {
-    const marginX = W * 0.20;
+    const leftX = W * 0.22;
+    const rightX = W * 0.78;
     let sx, sy, tx, ty, ang;
 
     if (fromScore === 0) {
-      sx = W * 0.50;
-      sy = H * 0.72;
-      tx = W * 0.50;
-      ty = H * 0.28;
-      ang = 0;
+      S.side = 1; // start bottom-left → top-right (reference opener)
     } else {
-      // After a dunk the ball is high — drop the whole stack so we keep climbing the screen
-      sx = clamp(S.ball.x, marginX, W - marginX);
-      sy = H * 0.70;
-      // Target clearly ABOVE with only a mild lateral offset
-      const climb = rand(H * 0.30, H * 0.40);
-      ty = sy - climb;
-      const side = (Math.random() < 0.5 ? -1 : 1) * rand(0, W * 0.14);
-      tx = clamp(sx + side, marginX, W - marginX);
-      ang = clamp((sx - tx) * 0.0018, -0.35, 0.35);
+      // Alternate sides every dunk (zigzag climb)
+      S.side *= -1;
     }
 
-    // Hard assert: target must sit well above source
-    if (ty > sy - H * 0.26) ty = sy - H * 0.32;
+    const sourceOnLeft = S.side === 1;
+    sx = sourceOnLeft ? leftX : rightX;
+    tx = sourceOnLeft ? rightX : leftX;
 
-    S.source = hoop(sx, sy, ang * 0.3);
+    // Vertical climb — always below → above, never same height
+    sy = H * (fromScore === 0 ? 0.70 : 0.68);
+    ty = H * rand(0.24, 0.34);
+
+    // Rim faces the approach lane
+    ang = sourceOnLeft ? -0.38 : 0.38;
+    ang += rand(-0.08, 0.08);
+
+    S.source = hoop(sx, sy, ang * 0.35);
     S.target = hoop(tx, ty, ang);
     S.star = { x: tx, y: ty - 34 };
     S.starOn = Math.random() < 0.9 || fromScore < 2;
@@ -313,10 +313,29 @@
   }
 
   function reset() {
-    S.score = 0; S.stars = 0; S.combo = 0;
+    S.score = 0; S.stars = 0; S.combo = 0; S.side = 1;
     S.fx = []; S.ghosts = []; S.comboFX = null;
     S.contA = 0; S.showHint = true;
     place(0);
+  }
+
+  // Invisible side walls — screen edges deflect the ball
+  function collideScreenEdges() {
+    const b = S.ball;
+    const pad = BR + 3;
+    if (b.x < pad) {
+      b.x = pad;
+      if (b.vx < 0) {
+        b.vx = -b.vx * 0.9;
+        burst(pad, b.y, CYAN, 5);
+      }
+    } else if (b.x > W - pad) {
+      b.x = W - pad;
+      if (b.vx > 0) {
+        b.vx = -b.vx * 0.9;
+        burst(W - pad, b.y, CYAN, 5);
+      }
+    }
   }
 
   // ——— NET: woven pouch with diamond mesh + thick steel rim ———
@@ -1075,6 +1094,7 @@
       rimHit(S.source);
       rimHit(S.target);
       collideObstacles(dt);
+      collideScreenEdges();
 
       if (S.starOn && hypot(b.x - S.star.x, b.y - S.star.y) < 24) {
         S.starOn = false;
@@ -1098,6 +1118,18 @@
     ctx.translate(sx, sy);
     ctx.fillStyle = COURT;
     ctx.fillRect(-30, -30, W + 60, H + 60);
+
+    // Soft edge rails (hint that sides deflect)
+    const rail = ctx.createLinearGradient(0, 0, 14, 0);
+    rail.addColorStop(0, "rgba(90,96,110,0.14)");
+    rail.addColorStop(1, "rgba(90,96,110,0)");
+    ctx.fillStyle = rail;
+    ctx.fillRect(0, 0, 14, H);
+    const railR = ctx.createLinearGradient(W, 0, W - 14, 0);
+    railR.addColorStop(0, "rgba(90,96,110,0.14)");
+    railR.addColorStop(1, "rgba(90,96,110,0)");
+    ctx.fillStyle = railR;
+    ctx.fillRect(W - 14, 0, 14, H);
 
     drawHUD();
 
