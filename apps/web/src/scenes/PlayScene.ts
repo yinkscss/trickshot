@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { RunFSM, allowsContinue, type PhysicsIntent } from "@trickshot/logic";
 import { layoutForSide, makeHoop } from "../game/layout";
 import {
   beginDunkTransition,
@@ -35,8 +36,6 @@ const GREY = "#5f646e";
 const BALL_FILL = 0x1e5fff;
 const OBSTACLE_RED = 0xff3b30;
 
-type Mode = "aim" | "flying" | "scored" | "transition" | "continue";
-
 /**
  * Pitch-parity core loop: zigzag climb, one obstacle per shot,
  * seamless dunk→next-loop handoff (no hard teleport).
@@ -47,7 +46,7 @@ export class PlayScene extends Phaser.Scene {
   private hintText!: Phaser.GameObjects.Text;
   private continueText!: Phaser.GameObjects.Text;
 
-  private mode: Mode = "aim";
+  private readonly runFsm = new RunFSM("casual");
   private score = 0;
   private side = 1;
 
@@ -62,7 +61,6 @@ export class PlayScene extends Phaser.Scene {
   private dragging = false;
   private dragPt: Vec2 | null = null;
   private showHint = true;
-  private scoredAt = 0;
 
   private W = 390;
   private H = 780;
@@ -100,7 +98,7 @@ export class PlayScene extends Phaser.Scene {
       .setVisible(false);
 
     this.syncSize();
-    this.place(0);
+    this.applyRunResult(this.runFsm.dispatch({ type: "bootComplete" }));
 
     this.input.on("pointerdown", this.onDown, this);
     this.input.on("pointermove", this.onMove, this);
@@ -115,8 +113,8 @@ export class PlayScene extends Phaser.Scene {
     const prevW = this.W;
     const prevH = this.H;
     this.syncSize();
-    if (this.mode === "aim" && prevW > 0 && prevH > 0) {
-      this.place(this.score, false);
+    if (this.runFsm.runState === "aiming" && prevW > 0 && prevH > 0) {
+      this.place(this.runFsm.state.score, false);
     }
   };
 
@@ -141,30 +139,85 @@ export class PlayScene extends Phaser.Scene {
     this.ball.y = L.sy - 1;
     this.ball.vx = 0;
     this.ball.vy = 0;
-    this.mode = "aim";
     this.aim = { x: 0, y: 0, pull: 0 };
     this.dragging = false;
     this.dragPt = null;
-    this.scoredAt = 0;
     this.transition = null;
     this.aimOrigin = { x: L.sx, y: L.sy - 1 };
     this.continueText.setVisible(false);
   }
 
+  private applyRunResult(result: {
+    accepted: boolean;
+    intents: PhysicsIntent[];
+  }): void {
+    for (const intent of result.intents) {
+      switch (intent.type) {
+        case "startFlight":
+          this.ball.x = intent.x;
+          this.ball.y = intent.y;
+          this.ball.vx = intent.vx;
+          this.ball.vy = intent.vy;
+          break;
+        case "stopBall":
+          this.ball.vx = 0;
+          this.ball.vy = 0;
+          break;
+        case "seatBallAtHoop":
+          if (this.target) {
+            this.target.wobble = 1.5;
+            this.ball.x = this.target.x;
+            this.ball.y = this.target.y - 1;
+          }
+          break;
+        case "beginDunkTransition":
+          this.startTransition();
+          break;
+        case "completeDunkTransition":
+          this.completeTransition();
+          break;
+        case "placeRun":
+          this.place(intent.score, intent.advanceSide);
+          break;
+        case "showContinuePrompt":
+          this.continueText.setVisible(true);
+          break;
+        case "hideContinuePrompt":
+          this.continueText.setVisible(false);
+          break;
+        case "runEnded":
+          this.continueText.setText("RUN OVER");
+          this.continueText.setVisible(true);
+          break;
+      }
+    }
+    this.score = this.runFsm.state.score;
+    this.scoreText.setText(String(this.score));
+  }
+
+  private dispatchMiss(): void {
+    this.dragging = false;
+    this.dragPt = null;
+    this.applyRunResult(this.runFsm.dispatch({ type: "outOfBounds" }));
+    if (allowsContinue(this.runFsm.state.mode)) {
+      this.applyRunResult(this.runFsm.dispatch({ type: "offerContinue" }));
+    } else {
+      this.applyRunResult(this.runFsm.dispatch({ type: "endRun" }));
+    }
+  }
+
   private resetRun(): void {
-    this.score = 0;
-    this.side = 1;
     this.showHint = true;
-    this.scoreText.setText("0");
-    this.place(0);
+    this.continueText.setText("TAP TO RETRY");
+    this.applyRunResult(this.runFsm.dispatch({ type: "acceptContinue" }));
   }
 
   private onDown(pointer: Phaser.Input.Pointer): void {
-    if (this.mode === "continue") {
+    if (this.runFsm.runState === "continue") {
       this.resetRun();
       return;
     }
-    if (this.mode !== "aim" || !this.source) return;
+    if (this.runFsm.runState !== "aiming" || !this.source) return;
     const p = { x: pointer.worldX, y: pointer.worldY };
     if (hypot(p.x - this.source.x, p.y - this.source.y) > 160) return;
     this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
@@ -175,28 +228,32 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private onMove(pointer: Phaser.Input.Pointer): void {
-    if (!this.dragging || this.mode !== "aim") return;
+    if (!this.dragging || this.runFsm.runState !== "aiming") return;
     this.dragPt = { x: pointer.worldX, y: pointer.worldY };
     this.aim = aimFrom(this.aimOrigin, this.dragPt, this.W, this.H);
   }
 
   private onUp(pointer: Phaser.Input.Pointer): void {
-    if (!this.dragging || this.mode !== "aim") return;
+    if (!this.dragging || this.runFsm.runState !== "aiming") return;
     this.dragPt = { x: pointer.worldX, y: pointer.worldY };
     this.aim = aimFrom(this.aimOrigin, this.dragPt, this.W, this.H);
     this.dragging = false;
 
-    if (hypot(this.aim.x, this.aim.y) < MIN_SHOT) {
+    const result = this.runFsm.dispatch({
+      type: "release",
+      vx: this.aim.x,
+      vy: this.aim.y,
+      originX: this.aimOrigin.x,
+      originY: this.aimOrigin.y,
+      minSpeed: MIN_SHOT,
+    });
+    if (!result.accepted) {
       this.aim = { x: 0, y: 0, pull: 0 };
-      if (this.score === 0) this.showHint = true;
+      if (this.runFsm.state.score === 0) this.showHint = true;
       return;
     }
 
-    this.ball.x = this.aimOrigin.x;
-    this.ball.y = this.aimOrigin.y;
-    this.ball.vx = this.aim.x;
-    this.ball.vy = this.aim.y;
-    this.mode = "flying";
+    this.applyRunResult(result);
     this.aim = { x: 0, y: 0, pull: 0 };
     this.dragPt = null;
   }
@@ -204,9 +261,13 @@ export class PlayScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const dt = Math.min(delta / 1000, 0.033);
 
-    if (this.mode === "transition" && this.transition) {
+    if (this.runFsm.runState === "transition" && this.transition) {
       const done = updateDunkTransition(this.transition, this.ball, dt);
-      if (done) this.completeTransition();
+      if (done) {
+        this.applyRunResult(
+          this.runFsm.dispatch({ type: "finishTransition" }),
+        );
+      }
       this.drawFrame();
       return;
     }
@@ -214,22 +275,25 @@ export class PlayScene extends Phaser.Scene {
     if (this.source) this.source.wobble *= Math.pow(0.04, dt);
     if (this.target) this.target.wobble *= Math.pow(0.06, dt);
 
-    if (this.mode === "aim" && this.source) {
+    if (this.runFsm.runState === "aiming" && this.source) {
       this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
       this.ball.x = this.aimOrigin.x;
       this.ball.y =
         this.aimOrigin.y + (this.dragging ? 0 : Math.sin(_time / 260) * 1.2);
     }
 
-    if (this.mode === "scored" && this.target) {
+    if (this.runFsm.runState === "scored" && this.target) {
       this.ball.x = this.target.x;
       this.ball.y = this.target.y - 1 + Math.sin(_time / 120) * 0.8;
-      if (_time - this.scoredAt > 180) {
-        this.startTransition();
+      const scoredAt = this.runFsm.state.scoredAtMs ?? _time;
+      if (_time - scoredAt > 180) {
+        this.applyRunResult(
+          this.runFsm.dispatch({ type: "swishHoldComplete" }, _time),
+        );
       }
     }
 
-    if (this.mode === "flying") {
+    if (this.runFsm.runState === "flying") {
       stepProjectile(this.ball, dt, this.W);
       if (this.source) rimHit(this.source, this.ball);
       if (this.target) rimHit(this.target, this.ball);
@@ -242,7 +306,7 @@ export class PlayScene extends Phaser.Scene {
         this.ball.x < -120 ||
         this.ball.x > this.W + 120
       ) {
-        this.onMiss();
+        this.dispatchMiss();
       }
     }
 
@@ -250,27 +314,18 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private onScore(time: number): void {
-    if (this.scoredAt || !this.target || this.mode === "transition") return;
-    this.scoredAt = time;
-    this.score += 1;
-    this.target.wobble = 1.5;
-    this.ball.x = this.target.x;
-    this.ball.y = this.target.y - 1;
-    this.ball.vx = 0;
-    this.ball.vy = 0;
-    this.mode = "scored";
-    this.scoreText.setText(String(this.score));
-  }
-
-  private onMiss(): void {
-    this.mode = "continue";
-    this.dragging = false;
-    this.dragPt = null;
-    this.continueText.setVisible(true);
+    if (
+      this.runFsm.state.scoredAtMs !== null ||
+      !this.target ||
+      this.runFsm.runState === "transition"
+    ) {
+      return;
+    }
+    this.applyRunResult(this.runFsm.dispatch({ type: "throughHoop" }, time));
   }
 
   private startTransition(): void {
-    if (!this.source || !this.target || this.mode === "transition") return;
+    if (!this.source || !this.target || this.transition) return;
     const { side, transition } = beginDunkTransition({
       side: this.side,
       score: this.score,
@@ -285,7 +340,6 @@ export class PlayScene extends Phaser.Scene {
     this.source = null;
     this.target = null;
     this.obstacles = [];
-    this.mode = "transition";
     this.dragging = false;
     this.dragPt = null;
   }
@@ -299,11 +353,9 @@ export class PlayScene extends Phaser.Scene {
     this.ball = next.ball;
     this.aimOrigin = next.aimOrigin;
     this.transition = null;
-    this.mode = "aim";
     this.aim = { x: 0, y: 0, pull: 0 };
     this.dragging = false;
     this.dragPt = null;
-    this.scoredAt = 0;
   }
 
   private drawFrame(): void {
@@ -314,14 +366,14 @@ export class PlayScene extends Phaser.Scene {
     g.fillRect(0, 0, 14, this.H);
     g.fillRect(this.W - 14, 0, 14, this.H);
 
-    if (this.mode === "transition" && this.transition) {
+    if (this.runFsm.runState === "transition" && this.transition) {
       this.drawTransition(g, this.transition);
     } else {
       this.drawObstacles(g, this.obstacles, 1);
       if (this.target) this.drawHoop(g, this.target, ORANGE, null);
       if (this.source) {
         const pull =
-          this.mode === "aim" && this.dragging
+          this.runFsm.runState === "aiming" && this.dragging
             ? netPullForHoop(
                 this.source,
                 this.dragPt,
@@ -334,14 +386,17 @@ export class PlayScene extends Phaser.Scene {
       }
     }
 
-    if (this.mode === "aim" && this.dragging) {
+    if (this.runFsm.runState === "aiming" && this.dragging) {
       this.drawAimDots(g);
     }
 
     this.drawBall(g, this.ball.x, this.ball.y);
 
     this.hintText.setVisible(
-      this.showHint && this.mode === "aim" && !this.dragging && !!this.source,
+      this.showHint &&
+        this.runFsm.runState === "aiming" &&
+        !this.dragging &&
+        !!this.source,
     );
     if (this.source && this.hintText.visible) {
       this.hintText.setPosition(
