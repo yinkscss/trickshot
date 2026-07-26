@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { aimFrom, predictPath } from "./aim.js";
-import { FIXED_DT, G, PREVIEW_DT, WALL_REST } from "./constants.js";
+import { FIXED_DT, G, PREVIEW_DT, FLIGHT_EPSILON, WALL_REST } from "./constants.js";
 import {
   cloneProjectile,
   stepProjectile,
@@ -16,7 +16,7 @@ describe("applyWallBounce", () => {
     const hit = applyWallBounce(p, 390);
     assert.equal(hit, true);
     assert.equal(p.x, pad);
-    assert.ok(Math.abs(p.vx - 200 * WALL_REST) < 1e-9);
+    assert.ok(Math.abs(p.vx - 200 * WALL_REST) < FLIGHT_EPSILON);
   });
 
   it("reflects right wall with WALL_REST", () => {
@@ -26,7 +26,7 @@ describe("applyWallBounce", () => {
     const hit = applyWallBounce(p, W);
     assert.equal(hit, true);
     assert.equal(p.x, W - pad);
-    assert.ok(Math.abs(p.vx - -200 * WALL_REST) < 1e-9);
+    assert.ok(Math.abs(p.vx - -200 * WALL_REST) < FLIGHT_EPSILON);
   });
 });
 
@@ -50,10 +50,10 @@ describe("stepProjectileSubsteps", () => {
     for (let i = 0; i < Math.round(frameDt / FIXED_DT); i++) {
       stepProjectile(b, FIXED_DT, W);
     }
-    assert.ok(Math.abs(a.x - b.x) < 1e-9);
-    assert.ok(Math.abs(a.y - b.y) < 1e-9);
-    assert.ok(Math.abs(a.vx - b.vx) < 1e-9);
-    assert.ok(Math.abs(a.vy - b.vy) < 1e-9);
+    assert.ok(Math.abs(a.x - b.x) < FLIGHT_EPSILON);
+    assert.ok(Math.abs(a.y - b.y) < FLIGHT_EPSILON);
+    assert.ok(Math.abs(a.vx - b.vx) < FLIGHT_EPSILON);
+    assert.ok(Math.abs(a.vy - b.vy) < FLIGHT_EPSILON);
   });
 });
 
@@ -86,7 +86,8 @@ describe("preview / flight determinism", () => {
       const dot = dots[drawn];
       if (!dot) break;
       assert.ok(
-        Math.abs(dot.x - flight.x) < 1e-9 && Math.abs(dot.y - flight.y) < 1e-9,
+        Math.abs(dot.x - flight.x) < FLIGHT_EPSILON &&
+          Math.abs(dot.y - flight.y) < FLIGHT_EPSILON,
         `preview dot ${drawn} diverged at step ${i}`,
       );
       assert.equal(dot.bounced, bounced);
@@ -126,7 +127,7 @@ describe("preview / flight determinism", () => {
       stepProjectile(a, dt, W);
       stepProjectile(b, dt, W);
     }
-    assert.ok(Math.abs(a.x - b.x) < 1e-9);
-    assert.ok(Math.abs(a.y - b.y) < 1e-9);
+    assert.ok(Math.abs(a.x - b.x) < FLIGHT_EPSILON);
+    assert.ok(Math.abs(a.y - b.y) < FLIGHT_EPSILON);
   });
 });
