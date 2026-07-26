@@ -183,7 +183,20 @@
     showHint: true,
     scoredAt: 0,
     side: 1, // 1 = source on left this shot; -1 = source on right
+    transition: null,
   };
+
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function mixRim(t) {
+    // ORANGE → GREY as the scored hoop becomes the new source
+    const r = lerp(0xff, 0x5f, t);
+    const g = lerp(0x4d, 0x64, t);
+    const b = lerp(0x1a, 0x6e, t);
+    return `rgb(${r|0},${g|0},${b|0})`;
+  }
 
   function edgePad() { return BR + 3; }
 
@@ -209,37 +222,35 @@
     return { x, y, ang, wobble: 0 };
   }
 
-  // ——— Dunk Shot lane: source low on one side, target high on the OTHER side ———
-  function place(fromScore) {
+  function layoutForSide(side, fromScore) {
     const leftX = W * 0.22;
     const rightX = W * 0.78;
-    let sx, sy, tx, ty, ang;
+    const sourceOnLeft = side === 1;
+    const sx = sourceOnLeft ? leftX : rightX;
+    const tx = sourceOnLeft ? rightX : leftX;
+    const sy = H * (fromScore === 0 ? 0.70 : 0.68);
+    const ty = H * rand(0.24, 0.34);
+    const ang = (sourceOnLeft ? -0.38 : 0.38) + rand(-0.08, 0.08);
+    return {
+      sx, sy, tx, ty,
+      sourceAng: ang * 0.35,
+      targetAng: ang,
+      star: { x: tx, y: ty - 34 },
+    };
+  }
 
-    if (fromScore === 0) {
-      S.side = 1; // start bottom-left → top-right (reference opener)
-    } else {
-      // Alternate sides every dunk (zigzag climb)
-      S.side *= -1;
-    }
+  // Hard snap (boot / continue only) — dunks use beginTransition instead
+  function place(fromScore) {
+    if (fromScore === 0) S.side = 1;
+    else S.side *= -1;
 
-    const sourceOnLeft = S.side === 1;
-    sx = sourceOnLeft ? leftX : rightX;
-    tx = sourceOnLeft ? rightX : leftX;
-
-    // Vertical climb — always below → above, never same height
-    sy = H * (fromScore === 0 ? 0.70 : 0.68);
-    ty = H * rand(0.24, 0.34);
-
-    // Rim faces the approach lane
-    ang = sourceOnLeft ? -0.38 : 0.38;
-    ang += rand(-0.08, 0.08);
-
-    S.source = hoop(sx, sy, ang * 0.35);
-    S.target = hoop(tx, ty, ang);
-    S.star = { x: tx, y: ty - 34 };
+    const L = layoutForSide(S.side, fromScore);
+    S.source = hoop(L.sx, L.sy, L.sourceAng);
+    S.target = hoop(L.tx, L.ty, L.targetAng);
+    S.star = { ...L.star };
     S.starOn = Math.random() < 0.9 || fromScore < 2;
-    S.ball.x = sx;
-    S.ball.y = sy - 1;
+    S.ball.x = L.sx;
+    S.ball.y = L.sy - 1;
     S.ball.vx = 0;
     S.ball.vy = 0;
     S.trail = [];
@@ -248,7 +259,113 @@
     S.aim = { x: 0, y: 0 };
     S.drag = false;
     S.scoredAt = 0;
-    S.obstacles = buildObstacles(sx, sy, tx, ty, fromScore);
+    S.transition = null;
+    S.obstacles = buildObstacles(L.sx, L.sy, L.tx, L.ty, fromScore);
+    S.aimOrigin = { x: L.sx, y: L.sy - 1 };
+  }
+
+  // Seamless dunk → next loop: carry ball down, exit old hoop, enter new goal
+  function beginTransition() {
+    S.side *= -1;
+    const L = layoutForSide(S.side, S.score);
+    const carrier = S.target;
+    const leaving = S.source;
+
+    // Motion-blur ghosts behind the carrying hoop
+    for (let i = 0; i < 4; i++) {
+      S.ghosts.push({
+        x: carrier.x,
+        y: carrier.y + (i + 1) * 10,
+        ang: carrier.ang,
+        a: 0.35 - i * 0.07,
+        life: 0.45,
+      });
+    }
+
+    S.transition = {
+      t: 0,
+      dur: 0.58,
+      carryFrom: { x: carrier.x, y: carrier.y, ang: carrier.ang },
+      carryTo: { x: L.sx, y: L.sy, ang: L.sourceAng },
+      leaveFrom: { x: leaving.x, y: leaving.y, ang: leaving.ang },
+      leaveTo: { x: leaving.x, y: H + 90, ang: leaving.ang },
+      arriveFrom: { x: L.tx, y: L.ty - 140, ang: L.targetAng },
+      arriveTo: { x: L.tx, y: L.ty, ang: L.targetAng },
+      nextStar: { ...L.star },
+      nextObstacles: buildObstacles(L.sx, L.sy, L.tx, L.ty, S.score),
+      oldObstacles: S.obstacles.map((o) => ({ ...o })),
+      // live draw poses
+      carry: null,
+      leave: null,
+      arrive: null,
+    };
+
+    S.source = null;
+    S.target = null;
+    S.obstacles = [];
+    S.starOn = false;
+    S.star = null;
+    S.trail = [];
+    S.mode = "transition";
+    S.drag = false;
+  }
+
+  function finishTransition() {
+    const tr = S.transition;
+    S.source = hoop(tr.carryTo.x, tr.carryTo.y, tr.carryTo.ang);
+    S.target = hoop(tr.arriveTo.x, tr.arriveTo.y, tr.arriveTo.ang);
+    S.star = { ...tr.nextStar };
+    S.starOn = Math.random() < 0.9 || S.score < 2;
+    S.obstacles = tr.nextObstacles;
+    S.ball.x = S.source.x;
+    S.ball.y = S.source.y - 1;
+    S.ball.vx = 0;
+    S.ball.vy = 0;
+    S.rings = [];
+    S.mode = "aim";
+    S.aim = { x: 0, y: 0 };
+    S.drag = false;
+    S.scoredAt = 0;
+    S.transition = null;
+    S.aimOrigin = { x: S.source.x, y: S.source.y - 1 };
+  }
+
+  function updateTransition(dt) {
+    const tr = S.transition;
+    if (!tr) return;
+    tr.t += dt / tr.dur;
+    const u = easeInOutCubic(clamp(tr.t, 0, 1));
+    // New goal eases in slightly after the camera drop starts
+    const ua = easeInOutCubic(clamp((tr.t - 0.12) / 0.88, 0, 1));
+
+    const cx = lerp(tr.carryFrom.x, tr.carryTo.x, u);
+    const cy = lerp(tr.carryFrom.y, tr.carryTo.y, u);
+    const ca = lerp(tr.carryFrom.ang, tr.carryTo.ang, u);
+    tr.carry = { x: cx, y: cy, ang: ca, wobble: (1 - u) * 1.1, colorT: u };
+
+    tr.leave = {
+      x: lerp(tr.leaveFrom.x, tr.leaveTo.x, u),
+      y: lerp(tr.leaveFrom.y, tr.leaveTo.y, u),
+      ang: tr.leaveFrom.ang,
+      a: 1 - u,
+      wobble: 0,
+    };
+
+    tr.arrive = {
+      x: lerp(tr.arriveFrom.x, tr.arriveTo.x, ua),
+      y: lerp(tr.arriveFrom.y, tr.arriveTo.y, ua),
+      ang: lerp(tr.arriveFrom.ang, tr.arriveTo.ang, ua),
+      a: ua,
+      wobble: (1 - ua) * 0.6,
+    };
+
+    // Ball locked in the carrying net the whole way
+    S.ball.x = cx;
+    S.ball.y = cy - 1;
+    S.ball.vx = 0;
+    S.ball.vy = 0;
+
+    if (tr.t >= 1) finishTransition();
   }
 
   function buildObstacles(sx, sy, tx, ty, score) {
@@ -323,7 +440,7 @@
 
   function reset() {
     S.score = 0; S.stars = 0; S.combo = 0; S.side = 1;
-    S.fx = []; S.ghosts = []; S.comboFX = null;
+    S.fx = []; S.ghosts = []; S.comboFX = null; S.transition = null;
     S.contA = 0; S.showHint = true;
     place(0);
   }
@@ -975,38 +1092,31 @@
   }
 
   function onScore() {
-    if (S.scoredAt) return;
+    if (S.scoredAt || S.mode === "transition") return;
     S.scoredAt = performance.now();
-    S.mode = "scored";
     S.score += 1;
     S.combo += 1;
     S.target.wobble = 1.5;
     triggerComboAnim();
 
-    if (S.starOn) {
+    if (S.starOn && S.star) {
       S.starOn = false;
       S.stars += 1;
       burst(S.star.x, S.star.y, STAR, 12);
     }
 
-    for (let i = 0; i < 5; i++) {
-      S.ghosts.push({
-        x: S.target.x,
-        y: S.target.y + (i + 1) * 8,
-        ang: S.target.ang,
-        a: 0.4 - i * 0.07,
-        life: 0.5,
-      });
-    }
+    // Settle into the scored net, then scroll into the next lane
+    S.ball.x = S.target.x;
+    S.ball.y = S.target.y - 1;
+    S.ball.vx = 0;
+    S.ball.vy = 0;
+    S.mode = "scored";
 
-    S.ball.vx *= 0.08;
-    S.ball.vy *= 0.08;
-
+    // Brief swish hold, then seamless handoff (no teleport)
     setTimeout(() => {
-      S.ball.x = S.target.x;
-      S.ball.y = S.target.y - 1;
-      place(S.score);
-    }, 320);
+      if (S.mode !== "scored") return;
+      beginTransition();
+    }, 180);
   }
 
   // Slingshot: velocity opposite the drag, from fixed hoop origin
@@ -1131,6 +1241,18 @@
 
     if (S.comboFX) S.comboFX.dt = dt;
 
+    if (S.mode === "transition") {
+      updateTransition(dt);
+      return; // skip normal aim/fly while handing off
+    }
+
+    if (S.mode === "scored" && S.target) {
+      // Hold ball in the dunked net during the short swish beat
+      S.ball.x = S.target.x;
+      S.ball.y = S.target.y - 1 + Math.sin(performance.now() / 120) * 0.8;
+      S.target.wobble *= Math.pow(0.08, dt);
+    }
+
     if (S.mode === "aim" && S.source) {
       if (S.drag && S.dragPt) {
         // Pull ball toward finger (slingshot stretch) — launch still uses aimOrigin
@@ -1220,19 +1342,53 @@
       ctx.restore();
     }
 
-    drawObstacles();
+    if (S.mode === "transition" && S.transition) {
+      const tr = S.transition;
+      // Old obstacles fade out
+      if (tr.oldObstacles && tr.leave) {
+        const saved = S.obstacles;
+        S.obstacles = tr.oldObstacles;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, tr.leave.a * 0.85);
+        drawObstacles();
+        ctx.restore();
+        S.obstacles = saved;
+      }
+      // Departing hoop (ex-source) slides off
+      if (tr.leave && tr.leave.a > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = tr.leave.a;
+        drawHoop(tr.leave, GREY);
+        ctx.restore();
+      }
+      // Arriving goal fades/slides in
+      if (tr.arrive && tr.arrive.a > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = tr.arrive.a;
+        drawHoop(tr.arrive, ORANGE);
+        ctx.restore();
+        if (tr.arrive.a > 0.55) {
+          drawStarIcon(tr.arriveTo.x, tr.arriveTo.y - 34, 12, performance.now() / 800);
+        }
+      }
+      // Carrier hoop (scored net → new source) with ball
+      if (tr.carry) {
+        const h = { x: tr.carry.x, y: tr.carry.y, ang: tr.carry.ang, wobble: tr.carry.wobble };
+        drawHoop(h, mixRim(tr.carry.colorT), { withBall: true });
+      }
+    } else {
+      drawObstacles();
 
-    if (S.starOn) drawStarIcon(S.star.x, S.star.y, 12, performance.now() / 800);
+      if (S.starOn && S.star) drawStarIcon(S.star.x, S.star.y, 12, performance.now() / 800);
 
-    // Target ABOVE
-    if (S.target) drawHoop(S.target, ORANGE);
+      // Source BELOW
+      if (S.source) {
+        drawHoop(S.source, GREY, { withBall: S.mode === "aim" });
+      }
 
-    // Source BELOW (with ball when aiming)
-    if (S.source) {
-      if (S.mode === "aim" || S.mode === "scored") {
-        drawHoop(S.source, GREY, { withBall: true });
-      } else {
-        drawHoop(S.source, GREY);
+      // Target ABOVE — during swish hold the ball nests in this net
+      if (S.target) {
+        drawHoop(S.target, ORANGE, { withBall: S.mode === "scored" });
       }
     }
 
@@ -1264,6 +1420,7 @@
     if (S.mode === "flying" || S.mode === "continue") {
       drawMarble(S.ball.x, S.ball.y, BR);
     }
+    // aim / scored / transition nest the ball inside drawHoop(withBall)
 
     for (const p of S.fx) {
       ctx.globalAlpha = Math.max(0, p.life);
