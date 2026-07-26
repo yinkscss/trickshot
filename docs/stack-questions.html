@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trick Shot — Stack Questions Pack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8e9ec;
+      --ink: #1a1c22;
+      --soft: #4a4e5a;
+      --muted: #7a7f8c;
+      --rim: #ff5a1f;
+      --ball: #2b6cff;
+      --card: #f4f5f7;
+      --line: rgba(26, 28, 34, 0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 60% 40% at 80% 0%, rgba(43,108,255,.12), transparent 50%),
+        radial-gradient(ellipse 50% 30% at 10% 0%, rgba(255,90,31,.1), transparent 45%),
+        linear-gradient(180deg, var(--bg), #d5d7dc);
+      min-height: 100vh;
+      line-height: 1.45;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr minmax(300px, 380px);
+      min-height: 100vh;
+    }
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; }
+      .preview {
+        position: sticky; bottom: 0; max-height: 42vh; height: auto !important;
+        border-top: 2px solid var(--ink); border-left: none !important;
+      }
+    }
+    .main { padding: 1.5rem 1.25rem 3rem; max-width: 720px; }
+    .nav {
+      display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
+      font-size: 0.78rem; font-weight: 600; margin-bottom: 1.25rem;
+    }
+    .nav a { color: var(--soft); text-decoration: none; }
+    .nav a:hover { color: var(--rim); }
+    .eyebrow {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--ball); margin-bottom: 0.4rem;
+    }
+    h1 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: clamp(2.4rem, 7vw, 3.6rem);
+      line-height: 0.95; letter-spacing: 0.03em; margin-bottom: 0.5rem;
+    }
+    h1 span { color: var(--rim); }
+    .lead { color: var(--soft); font-size: 0.95rem; margin-bottom: 1.25rem; max-width: 36rem; }
+    .progress-meta {
+      display: flex; justify-content: space-between;
+      font-family: "IBM Plex Mono", monospace; font-size: 0.7rem;
+      color: var(--muted); margin-bottom: 0.35rem;
+    }
+    .bar {
+      height: 8px; background: #d0d2d8; border-radius: 999px; overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+    .bar > i {
+      display: block; height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--rim), var(--ball));
+      transition: width 0.25s ease;
+    }
+    .q {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1rem 1.1rem 1.1rem;
+      margin-bottom: 0.85rem;
+    }
+    .q.answered { border-color: rgba(31,138,76,.4); }
+    .q-num {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.68rem; color: var(--rim); font-weight: 500;
+      letter-spacing: 0.06em; margin-bottom: 0.25rem;
+    }
+    .q h2 { font-size: 1.02rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .q .hint { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem; }
+    .opts { display: grid; gap: 0.4rem; }
+    label.opt {
+      display: flex; gap: 0.65rem; align-items: flex-start;
+      padding: 0.65rem 0.75rem; border-radius: 10px;
+      border: 1.5px solid var(--line); background: #fff;
+      cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    label.opt:hover { border-color: rgba(43,108,255,.4); }
+    label.opt:has(input:checked) {
+      border-color: var(--ball);
+      background: rgba(43,108,255,.06);
+    }
+    label.opt input { margin-top: 0.2rem; accent-color: var(--ball); }
+    label.opt strong { display: block; font-size: 0.9rem; margin-bottom: 0.1rem; }
+    label.opt .note { font-size: 0.78rem; color: var(--muted); }
+    .star { color: var(--rim); font-size: 0.75rem; }
+    .actions {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;
+    }
+    button {
+      font-family: inherit; font-weight: 700; font-size: 0.85rem;
+      border: none; border-radius: 10px; padding: 0.65rem 1rem; cursor: pointer;
+    }
+    .btn-primary { background: var(--rim); color: #fff; box-shadow: 0 3px 0 #b33a0a; }
+    .btn-ghost { background: transparent; border: 2px solid var(--ink); color: var(--ink); }
+    .btn-soft { background: var(--ball); color: #fff; box-shadow: 0 3px 0 #1a1c22; }
+    .preview {
+      background: #12141a; color: #e8ebf2;
+      padding: 1.25rem 1.15rem; display: flex; flex-direction: column;
+      border-left: 1px solid #2a2e38; position: sticky; top: 0; height: 100vh;
+    }
+    .preview h3 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 1.5rem; letter-spacing: 0.04em; margin-bottom: 0.35rem;
+    }
+    .preview .sub {
+      font-size: 0.75rem; color: #8b93a8; margin-bottom: 0.85rem;
+      font-family: "IBM Plex Mono", monospace;
+    }
+    #promptOut {
+      flex: 1; overflow: auto;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem; line-height: 1.55;
+      white-space: pre-wrap; word-break: break-word;
+      background: #0a0b10; border: 1px solid #2a2e38;
+      border-radius: 12px; padding: 0.9rem; color: #c5cad8;
+    }
+    .preview .btns { display: flex; gap: 0.5rem; margin-top: 0.85rem; }
+    .preview .btns button { flex: 1; }
+    .preview .btn-ghost { border-color: #555; color: #ddd; }
+    .toast {
+      font-size: 0.75rem; color: #7dffa3; min-height: 1.2em; margin-top: 0.5rem;
+      font-family: "IBM Plex Mono", monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="main">
+      <nav class="nav">
+        <a href="../index.html">Home</a>
+        <a href="prd.html">PRD</a>
+        <a href="roadmap.html">Roadmap</a>
+        <a href="animation-pitch.html">Pitch</a>
+      </nav>
+      <p class="eyebrow">Interactive pack</p>
+      <h1>STACK <span>QUESTIONS</span></h1>
+      <p class="lead">
+        Select one answer per question. The final agent prompt updates live —
+        copy it when you’re ready to build.
+      </p>
+      <div class="progress-meta">
+        <span id="progressLabel">0 / 0 answered</span>
+        <span>★ = PRD default</span>
+      </div>
+      <div class="bar"><i id="progressBar"></i></div>
+      <div id="questions"></div>
+      <div class="actions">
+        <button type="button" class="btn-soft" id="btnPrd">Reset to PRD defaults</button>
+        <button type="button" class="btn-ghost" id="btnClear">Clear all</button>
+        <button type="button" class="btn-primary" id="btnCopyMain">Copy final prompt</button>
+      </div>
+    </div>
+    <aside class="preview">
+      <h3>FINAL PROMPT</h3>
+      <p class="sub" id="readyState">Fill answers → copy</p>
+      <pre id="promptOut"></pre>
+      <div class="btns">
+        <button type="button" class="btn-primary" id="btnCopy">Copy</button>
+        <button type="button" class="btn-ghost" id="btnSelect">Select all</button>
+      </div>
+      <div class="toast" id="toast"></div>
+    </aside>
+  </div>
+<script>
+(() => {
+  const STORAGE_KEY = "trickshot-stack-answers";
+
+  const QUESTIONS = [
+    {
+      id: "client",
+      title: "Game client",
+      hint: "Where the core loop ships for players.",
+      prd: "unity_pwa",
+      options: [
+        { id: "unity_pwa", label: "Unity (native) + PWA checkout", note: "PRD default — Unity game; web for continues/powerups/entries" },
+        { id: "phaser_pwa", label: "Phaser 3 PWA / Capacitor", note: "Web-first hypercasual; wrap for stores" },
+        { id: "pixi", label: "PixiJS + custom physics", note: "Closest to current HTML pitch canvas" },
+        { id: "cocos", label: "Cocos Creator", note: "2D mobile-first" },
+      ],
+    },
+    {
+      id: "physics",
+      title: "Physics / aim model",
+      hint: "Must match pitch: slingshot net drag, wall banks, preview = flight.",
+      prd: "custom_2d",
+      options: [
+        { id: "custom_2d", label: "Custom 2D integrator", note: "Like the playable pitch — full control of net + dots" },
+        { id: "unity_2d", label: "Unity Rigidbody2D", note: "If client is Unity" },
+        { id: "matter", label: "Matter.js / Planck", note: "If web client" },
+      ],
+    },
+    {
+      id: "chain",
+      title: "Blockchain",
+      hint: "Settlement for continues, powerups, tournaments.",
+      prd: "celo",
+      options: [
+        { id: "celo", label: "Celo (Ethereum L2)", note: "PRD default — MiniPay, sub-cent fees, stablecoins" },
+        { id: "base", label: "Base", note: "Alt L2 if distribution shifts" },
+        { id: "offchain_first", label: "Off-chain first, chain later", note: "Alpha without real money; add Celo in Beta" },
+      ],
+    },
+    {
+      id: "wallet",
+      title: "Wallet / auth",
+      hint: "Invisible onboarding for casual players.",
+      prd: "magic",
+      options: [
+        { id: "magic", label: "Magic.link embedded wallets", note: "PRD default — email/social/phone" },
+        { id: "privy", label: "Privy", note: "Strong embedded + social login" },
+        { id: "minipay_only", label: "MiniPay / Opera first", note: "Emerging-market wedge" },
+        { id: "dynamic", label: "Dynamic", note: "Multi-wallet + embedded" },
+      ],
+    },
+    {
+      id: "contracts",
+      title: "Smart contracts",
+      hint: "Especially tournament escrow (85/15 rake).",
+      prd: "foundry",
+      options: [
+        { id: "foundry", label: "Solidity + Foundry + OpenZeppelin", note: "PRD default" },
+        { id: "hardhat", label: "Solidity + Hardhat + OpenZeppelin", note: "Familiar JS toolchain" },
+        { id: "later", label: "Defer contracts to Beta", note: "Mock shop in Alpha" },
+      ],
+    },
+    {
+      id: "indexing",
+      title: "On-chain indexing",
+      hint: "Leaderboards + verifiable rake history.",
+      prd: "goldsky",
+      options: [
+        { id: "goldsky", label: "Goldsky (Subgraphs + Mirror)", note: "PRD default" },
+        { id: "thegraph", label: "The Graph", note: "Standard subgraphs" },
+        { id: "custom_index", label: "Custom indexer / Postgres listeners", note: "More ops, full control" },
+        { id: "none_alpha", label: "None in Alpha", note: "Add before tournaments" },
+      ],
+    },
+    {
+      id: "backend",
+      title: "Backend",
+      hint: "Scores, anti-cheat, shop, season pass.",
+      prd: "node_pg_redis",
+      options: [
+        { id: "node_pg_redis", label: "Node/TypeScript + Postgres + Redis", note: "PRD default" },
+        { id: "supabase", label: "Supabase (Postgres + Edge)", note: "Faster MVP auth/DB" },
+        { id: "cf_workers", label: "Cloudflare Workers + D1/KV", note: "Edge-first, light ops" },
+      ],
+    },
+    {
+      id: "hosting",
+      title: "Hosting",
+      hint: "Where API + PWA live.",
+      prd: "aws_cf",
+      options: [
+        { id: "aws_cf", label: "AWS/GCP + Cloudflare", note: "PRD default" },
+        { id: "render", label: "Render", note: "Simple web services + Postgres" },
+        { id: "vercel_fly", label: "Vercel (web) + Fly.io (API)", note: "Split frontend/API" },
+      ],
+    },
+    {
+      id: "platforms",
+      title: "Launch platforms",
+      hint: "Where Alpha/Beta users play.",
+      prd: "ios_android_pwa",
+      options: [
+        { id: "ios_android_pwa", label: "iOS + Android + PWA", note: "Native feel + web checkout" },
+        { id: "pwa_first", label: "PWA / MiniPay web first", note: "Skip stores until PMF" },
+        { id: "android_first", label: "Android first", note: "Emerging markets focus" },
+      ],
+    },
+    {
+      id: "monetization",
+      title: "Monetization priority (v1)",
+      hint: "What to wire first after the loop feels right.",
+      prd: "continue_powerup",
+      options: [
+        { id: "continue_powerup", label: "Continues + powerups first", note: "PRD primary conversion" },
+        { id: "season_first", label: "Season pass first", note: "Recurring revenue anchor" },
+        { id: "tournament_first", label: "Tournaments first", note: "15% rake — heavier legal/audit" },
+        { id: "cosmetics_first", label: "Cosmetics / trails first", note: "Lower regulatory load" },
+      ],
+    },
+    {
+      id: "anticheat",
+      title: "Score authority",
+      hint: "Critical once tournaments pay real money.",
+      prd: "server_auth",
+      options: [
+        { id: "server_auth", label: "Server-authoritative validation", note: "PRD default for paid modes" },
+        { id: "hybrid", label: "Client play + server replay checks", note: "Good middle ground" },
+        { id: "client_alpha", label: "Client-trusted in Alpha only", note: "Replace before Beta money" },
+      ],
+    },
+    {
+      id: "legal",
+      title: "Tournament legal posture",
+      hint: "Open PRD question — pick a working assumption.",
+      prd: "continue_penalty",
+      options: [
+        { id: "continue_penalty", label: "Continues allowed with score penalty", note: "PRD working design" },
+        { id: "no_continue_tourney", label: "No continues in paid tournaments", note: "Cleaner skill-game story" },
+        { id: "legal_block", label: "Block tournaments until counsel signs off", note: "Safest — ship F2P first" },
+      ],
+    },
+  ];
+
+  const answers = {};
+  const root = document.getElementById("questions");
+  const promptOut = document.getElementById("promptOut");
+  const progressBar = document.getElementById("progressBar");
+  const progressLabel = document.getElementById("progressLabel");
+  const readyState = document.getElementById("readyState");
+  const toast = document.getElementById("toast");
+
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      if (saved && typeof saved === "object") {
+        QUESTIONS.forEach((q) => {
+          if (saved[q.id] && q.options.some((o) => o.id === saved[q.id])) {
+            answers[q.id] = saved[q.id];
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+  }
+
+  function setPrdDefaults() {
+    QUESTIONS.forEach((q) => { answers[q.id] = q.prd; });
+  }
+
+  function clearAll() {
+    QUESTIONS.forEach((q) => { delete answers[q.id]; });
+  }
+
+  function buildPrompt() {
+    const answered = QUESTIONS.filter((q) => answers[q.id]);
+    const missing = QUESTIONS.filter((q) => !answers[q.id]).map((q) => q.title);
+    const lines = [];
+
+    lines.push("You are implementing Trick Shot — a precision chain-hoop arcade game on Celo.");
+    lines.push("");
+    lines.push("## Locked stack & product decisions");
+    if (!answered.length) {
+      lines.push("(No answers selected yet — ask me to complete docs/stack-questions.html.)");
+    } else {
+      answered.forEach((q) => {
+        const opt = q.options.find((o) => o.id === answers[q.id]);
+        lines.push(`- **${q.title}:** ${opt.label}`);
+        lines.push(`  - Note: ${opt.note}`);
+        lines.push(`  - id: \`${q.id}=${answers[q.id]}\``);
+      });
+    }
+    lines.push("");
+    lines.push("## Must preserve from the playable pitch");
+    lines.push("- Zigzag climb: source low on one side, goal high on the other (alternate every dunk).");
+    lines.push("- Drag stretches the **net** (ball stays seated); aim preview matches flight including wall banks.");
+    lines.push("- Left/right screen edges bounce the ball.");
+    lines.push("- Exactly **one obstacle** per shot.");
+    lines.push("- Seamless dunk→next-loop transition (carry hoop down, no hard teleport).");
+    lines.push("- Combo juice on chain (x2 / x3 / ON FIRE).");
+    lines.push("");
+    lines.push("## Repo context");
+    lines.push("- PRD: docs/prd.html and docs/PRD_TrickShot_Celo.md");
+    lines.push("- Roadmap: docs/roadmap.html");
+    lines.push("- Playable pitch: docs/animation-pitch.html");
+    lines.push("- Stack pack: docs/stack-questions.html");
+    lines.push("- GitHub: https://github.com/yinkscss/trickshot");
+    lines.push("");
+    lines.push("## Monetization / chain constraints (from PRD)");
+    lines.push("- Powerups, pay-to-continue, season pass; tournaments with **15% house rake** (transparent on-chain).");
+    lines.push("- Powerups banned in tournament mode; no loot-box RNG.");
+    lines.push("- Prefer stablecoin micro-tx (cUSD/USDC) with sub-cent fees.");
+    lines.push("");
+    if (missing.length) {
+      lines.push("## Still undecided (ask before assuming)");
+      missing.forEach((m) => lines.push(`- ${m}`));
+      lines.push("");
+    }
+    lines.push("## Your task");
+    lines.push("Implement the next roadmap slice using ONLY the locked decisions above. Do not silently change the stack. Prefer surgical commits. Match the pitch feel before adding features.");
+    return lines.join("\n");
+  }
+
+  function syncUI() {
+    const total = QUESTIONS.length;
+    const count = QUESTIONS.filter((q) => answers[q.id]).length;
+    progressBar.style.width = `${(count / total) * 100}%`;
+    progressLabel.textContent = `${count} / ${total} answered`;
+    readyState.textContent = count === total ? "Complete — ready to copy" : `${total - count} remaining`;
+    promptOut.textContent = buildPrompt();
+    QUESTIONS.forEach((q) => {
+      const el = root.querySelector(`[data-qid="${q.id}"]`);
+      if (el) el.classList.toggle("answered", Boolean(answers[q.id]));
+    });
+  }
+
+  function render() {
+    root.innerHTML = QUESTIONS.map((q, idx) => `
+      <section class="q" data-qid="${q.id}">
+        <div class="q-num">Q${String(idx + 1).padStart(2, "0")}</div>
+        <h2>${q.title}</h2>
+        <p class="hint">${q.hint}</p>
+        <div class="opts">
+          ${q.options.map((o) => `
+            <label class="opt">
+              <input type="radio" name="${q.id}" value="${o.id}" ${answers[q.id] === o.id ? "checked" : ""} />
+              <div>
+                <strong>${o.label}${o.id === q.prd ? ' <span class="star">★</span>' : ""}</strong>
+                <div class="note">${o.note}</div>
+              </div>
+            </label>
+          `).join("")}
+        </div>
+      </section>
+    `).join("");
+
+    root.querySelectorAll("input[type=radio]").forEach((input) => {
+      input.addEventListener("change", () => {
+        answers[input.name] = input.value;
+        save();
+        syncUI();
+      });
+    });
+    syncUI();
+  }
+
+  async function copyPrompt() {
+    const text = buildPrompt();
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.textContent = "Copied to clipboard";
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(promptOut);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      toast.textContent = "Selected — press Cmd/Ctrl+C";
+    }
+    setTimeout(() => { toast.textContent = ""; }, 2200);
+  }
+
+  document.getElementById("btnPrd").addEventListener("click", () => {
+    setPrdDefaults();
+    save();
+    render();
+  });
+  document.getElementById("btnClear").addEventListener("click", () => {
+    clearAll();
+    save();
+    render();
+  });
+  document.getElementById("btnCopy").addEventListener("click", copyPrompt);
+  document.getElementById("btnCopyMain").addEventListener("click", copyPrompt);
+  document.getElementById("btnSelect").addEventListener("click", () => {
+    const range = document.createRange();
+    range.selectNodeContents(promptOut);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+
+  load();
+  if (!Object.keys(answers).length) setPrdDefaults();
+  render();
+})();
+</script>
+</body>
+</html>

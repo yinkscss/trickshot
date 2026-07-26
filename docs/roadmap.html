@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trick Shot — Roadmap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8e9ec;
+      --ink: #1a1c22;
+      --soft: #4a4e5a;
+      --muted: #7a7f8c;
+      --rim: #ff5a1f;
+      --ball: #2b6cff;
+      --card: #f4f5f7;
+      --line: rgba(26, 28, 34, 0.1);
+      --done: #1f8a4c;
+      --now: #ff5a1f;
+      --next: #2b6cff;
+      --later: #8a909c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 70% 40% at 10% 0%, rgba(255,90,31,.12), transparent 50%),
+        radial-gradient(ellipse 50% 35% at 90% 5%, rgba(43,108,255,.1), transparent 45%),
+        linear-gradient(180deg, var(--bg), #d8dade);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .shell { max-width: 920px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    .nav {
+      display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
+      padding: 0.7rem 1rem; margin-bottom: 1.75rem;
+      background: rgba(244,245,247,.9); border: 1px solid var(--line);
+      border-radius: 999px; position: sticky; top: 0.75rem; z-index: 5;
+      font-size: 0.78rem; font-weight: 600;
+    }
+    .nav a { color: var(--soft); text-decoration: none; }
+    .nav a:hover { color: var(--rim); }
+    .eyebrow {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--rim); margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: clamp(2.8rem, 9vw, 4.5rem);
+      line-height: 0.95; letter-spacing: 0.03em; margin-bottom: 0.6rem;
+    }
+    h1 span { color: var(--rim); }
+    .lead { color: var(--soft); max-width: 38rem; margin-bottom: 1.5rem; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem;
+    }
+    .chip {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.68rem; font-weight: 500; letter-spacing: 0.04em;
+      padding: 0.3rem 0.65rem; border-radius: 999px; border: 1px solid var(--line);
+      background: var(--card);
+    }
+    .chip.done { background: var(--done); color: #fff; border-color: var(--done); }
+    .chip.now { background: var(--now); color: #fff; border-color: var(--now); }
+    .chip.next { background: var(--next); color: #fff; border-color: var(--next); }
+
+    .phase {
+      position: relative;
+      padding: 0 0 1.75rem 1.5rem;
+      border-left: 3px solid var(--line);
+    }
+    .phase:last-child { padding-bottom: 0; }
+    .phase::before {
+      content: "";
+      position: absolute; left: -7px; top: 0.35rem;
+      width: 11px; height: 11px; border-radius: 50%;
+      background: var(--later); border: 2px solid #fff;
+      box-shadow: 0 0 0 2px var(--line);
+    }
+    .phase.done { border-left-color: var(--done); }
+    .phase.done::before { background: var(--done); box-shadow: 0 0 0 2px rgba(31,138,76,.35); }
+    .phase.now { border-left-color: var(--now); }
+    .phase.now::before { background: var(--now); box-shadow: 0 0 0 2px rgba(255,90,31,.35); }
+    .phase.next { border-left-color: var(--next); }
+    .phase.next::before { background: var(--next); box-shadow: 0 0 0 2px rgba(43,108,255,.35); }
+
+    .phase-head {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1rem;
+      margin-bottom: 0.55rem;
+    }
+    .phase-head h2 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 1.7rem; letter-spacing: 0.04em;
+    }
+    .when {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem; color: var(--muted);
+    }
+    .status {
+      font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 0.2rem 0.5rem; border-radius: 6px;
+      background: #ddd; color: var(--ink);
+    }
+    .phase.done .status { background: rgba(31,138,76,.15); color: var(--done); }
+    .phase.now .status { background: rgba(255,90,31,.15); color: var(--now); }
+    .phase.next .status { background: rgba(43,108,255,.12); color: var(--next); }
+
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 14px; padding: 1rem 1.15rem;
+    }
+    .card p { color: var(--soft); font-size: 0.92rem; margin-bottom: 0.75rem; }
+    .card ul { margin: 0 0 0 1.1rem; color: var(--soft); font-size: 0.88rem; }
+    .card li { margin-bottom: 0.35rem; }
+    .card li strong { color: var(--ink); }
+
+    .tracks {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.85rem;
+    }
+    @media (max-width: 700px) { .tracks { grid-template-columns: 1fr; } }
+    .track {
+      background: #fff; border: 1px solid var(--line); border-radius: 10px;
+      padding: 0.75rem 0.85rem;
+    }
+    .track h3 {
+      font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--rim); margin-bottom: 0.4rem;
+    }
+    .track ul { margin-left: 1rem; font-size: 0.82rem; }
+
+    footer {
+      margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line);
+      font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: var(--muted);
+    }
+    .cta {
+      display: inline-flex; margin-top: 1.25rem; font-weight: 700; font-size: 0.9rem;
+      padding: 0.7rem 1.1rem; border-radius: 10px; background: var(--ball); color: #fff;
+      text-decoration: none; box-shadow: 0 4px 0 var(--ink);
+    }
+    .cta:hover { transform: translateY(-1px); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a href="../index.html">Home</a>
+      <a href="prd.html">PRD</a>
+      <a href="animation-pitch.html">Pitch</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="stack-questions.html">Stack Qs →</a>
+    </nav>
+
+    <p class="eyebrow">Product · Engineering · Go-to-market</p>
+    <h1>TRICK <span>SHOT</span> ROADMAP</h1>
+    <p class="lead">
+      From playable pitch → shippable Celo arcade. Phases align with the PRD rollout
+      (Alpha → Beta → Launch → Post) and the live gameplay pitch in this repo.
+    </p>
+    <div class="legend">
+      <span class="chip done">Done / in repo</span>
+      <span class="chip now">Now</span>
+      <span class="chip next">Next</span>
+      <span class="chip">Later</span>
+    </div>
+
+    <section class="phase done">
+      <div class="phase-head">
+        <h2>0 · Foundation</h2>
+        <span class="when">Complete</span>
+        <span class="status">Done</span>
+      </div>
+      <div class="card">
+        <p>Docs, pitch, and interaction language locked so build agents share one picture of the game.</p>
+        <ul>
+          <li><strong>PRD</strong> — monetization, Celo rails, tournaments, KPIs</li>
+          <li><strong>Playable pitch</strong> — zigzag climb, net drag, wall banks, one obstacle/shot, combo juice, seamless loop handoff</li>
+          <li><strong>GitHub repo</strong> — <code>yinkscss/trickshot</code></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="phase now">
+      <div class="phase-head">
+        <h2>1 · Stack lock</h2>
+        <span class="when">This week</span>
+        <span class="status">Now</span>
+      </div>
+      <div class="card">
+        <p>Answer the stack pack, copy the final prompt, and freeze client / backend / chain choices before Alpha coding.</p>
+        <ul>
+          <li>Run <a href="stack-questions.html"><strong>Stack Questions Pack</strong></a> → copy prompt</li>
+          <li>Confirm Celo testnet + Magic.link sandbox</li>
+          <li>Scaffold repo folders from the locked stack</li>
+        </ul>
+        <a class="cta" href="stack-questions.html">Open stack questions →</a>
+      </div>
+    </section>
+
+    <section class="phase next">
+      <div class="phase-head">
+        <h2>2 · Alpha</h2>
+        <span class="when">Weeks 1–8</span>
+        <span class="status">Next</span>
+      </div>
+      <div class="card">
+        <p>Ship the real core loop on testnet with wallet onboarding and a powerup shop.</p>
+        <div class="tracks">
+          <div class="track">
+            <h3>Gameplay</h3>
+            <ul>
+              <li>Production client (from stack lock)</li>
+              <li>Drag-net aim, wall bounce, 1 obstacle</li>
+              <li>Seamless hoop handoff + combo VFX</li>
+              <li>Daily challenge + local leaderboard</li>
+            </ul>
+          </div>
+          <div class="track">
+            <h3>Web3 / backend</h3>
+            <ul>
+              <li>Invisible wallet (Magic.link)</li>
+              <li>Powerup shop (testnet cUSD)</li>
+              <li>Run score API + anti-tamper basics</li>
+              <li>CI + staging deploy</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phase">
+      <div class="phase-head">
+        <h2>3 · Closed Beta</h2>
+        <span class="when">Weeks 9–14</span>
+        <span class="status">Later</span>
+      </div>
+      <div class="card">
+        <p>Mainnet money moments + retention systems.</p>
+        <div class="tracks">
+          <div class="track">
+            <h3>Monetization</h3>
+            <ul>
+              <li>Pay-to-continue (cUSD)</li>
+              <li>Season pass track</li>
+              <li>Continue pricing test (flat vs scale)</li>
+              <li>Rewarded-ad continue path</li>
+            </ul>
+          </div>
+          <div class="track">
+            <h3>Infra</h3>
+            <ul>
+              <li>Goldsky indexing + leaderboards</li>
+              <li>Mainnet cUSD checkout (PWA)</li>
+              <li>Spend caps / self-exclusion</li>
+              <li>Server-authoritative scores</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="phase">
+      <div class="phase-head">
+        <h2>4 · Public Launch</h2>
+        <span class="when">Week 16</span>
+        <span class="status">Later</span>
+      </div>
+      <div class="card">
+        <p>Tournaments live with transparent 15% rake; MiniPay distribution push.</p>
+        <ul>
+          <li><strong>Escrow contract</strong> — entry fees, 85/15 split, on-chain payout events</li>
+          <li><strong>Audit</strong> before mainnet tournament funds</li>
+          <li><strong>Legal sign-off</strong> per launch jurisdiction</li>
+          <li><strong>MiniPay</strong> co-marketing</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="phase">
+      <div class="phase-head">
+        <h2>5 · Post-launch</h2>
+        <span class="when">Ongoing</span>
+        <span class="status">Later</span>
+      </div>
+      <div class="card">
+        <ul>
+          <li>Cosmetic marketplace (ERC-1155) + 5% royalty</li>
+          <li>Optional boast / run attestation mint</li>
+          <li>Expand tournament stake tiers + KYC provider</li>
+          <li>Obstacle roster expansion (pendulum, fan, glass, teleports)</li>
+        </ul>
+      </div>
+    </section>
+
+    <footer>
+      Trick Shot roadmap · aligns with PRD Draft v1.0 · July 2026<br />
+      Re-lock stack via stack-questions.html before Alpha engineering.
+    </footer>
+  </div>
+</body>
+</html>

@@ -8,6 +8,8 @@ Precision chain-hoop arcade game on **Celo** — drag, release, chain the dunks.
 |---|---|
 | HTML PRD | [docs/prd.html](docs/prd.html) |
 | Playable gameplay pitch | [docs/animation-pitch.html](docs/animation-pitch.html) |
+| Roadmap | [docs/roadmap.html](docs/roadmap.html) |
+| Stack questions pack (copy final prompt) | [docs/stack-questions.html](docs/stack-questions.html) |
 | Markdown PRD (source) | [docs/PRD_TrickShot_Celo.md](docs/PRD_TrickShot_Celo.md) |
 | Reference screenshots | [assets/references/](assets/references/) |
 
