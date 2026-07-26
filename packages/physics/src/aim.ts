@@ -1,5 +1,6 @@
 import {
   MAX_POW,
+  MIN_SHOT,
   PREVIEW_DT,
   PREVIEW_MAX_DOTS,
   PREVIEW_STEPS,
@@ -7,6 +8,12 @@ import {
 import { clamp, hypot, maxPull } from "./math.js";
 import { stepProjectile } from "./integrate.js";
 import type { AimVector, Hoop, NetPull, PredictDot, Vec2 } from "./types.js";
+
+export interface LaunchImpulse {
+  vx: number;
+  vy: number;
+  pull: number;
+}
 
 /** Slingshot: velocity opposite the drag, from fixed hoop origin */
 export function aimFrom(
@@ -50,6 +57,22 @@ export function netPullForHoop(
   const ly = wx * s + wy * c;
   const amt = clamp(hypot(wx, wy) / maxPull(worldWidth, worldHeight), 0, 1);
   return { lx, ly, amt };
+}
+
+/**
+ * Net-pull release → launch impulse (pitch parity).
+ * Returns null for tiny taps (aim deadzone) or pulls below `minSpeed`.
+ */
+export function launchFromPull(
+  origin: Vec2,
+  finger: Vec2,
+  worldWidth: number,
+  worldHeight: number,
+  minSpeed = MIN_SHOT,
+): LaunchImpulse | null {
+  const aim = aimFrom(origin, finger, worldWidth, worldHeight);
+  if (hypot(aim.x, aim.y) < minSpeed) return null;
+  return { vx: aim.x, vy: aim.y, pull: aim.pull };
 }
 
 /**

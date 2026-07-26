@@ -39,12 +39,36 @@ All positions and velocities are **world pixels** — the same space Phaser uses
 |--------|------|
 | `integrate` | `stepProjectile`, `stepProjectileSubsteps`, `cloneProjectile` |
 | `walls` | `applyWallBounce`, `collideScreenEdges`, `edgePad` |
-| `aim` | `aimFrom`, `netPullForHoop`, `predictPath` |
+| `aim` | `aimFrom`, `netPullForHoop`, `launchFromPull`, `predictPath` |
+| `hoop` | `hoopLocal`, `throughHoop`, `rimHit` |
 | `obstacles` | `collideObstacles`, `segmentBounce`, `MAX_LIVE_OBSTACLES` |
 | `constants` | `G`, `FIXED_DT`, `BALL_RADIUS`, … |
 | `types` | `Projectile`, `Vec2`, `Hoop`, `Obstacle`, … |
 
-Obstacle collision (wall peg + bumper disc) lives here for Node replay (#18). Hoop/rim collision remains in `apps/web` until #19.
+Obstacle collision (wall peg + bumper disc) and hoop rim/through probes live here for Node replay (#18–#19).
+
+## Net-pull launch
+
+- Ball stays seated at `aimOrigin` while `mode=aiming`; drag stretches the **net** (`netPullForHoop`).
+- On release: `launchFromPull(origin, finger, W, H)` → `{ vx, vy, pull }` or `null` (deadzone / below `MIN_SHOT`).
+- `aimFrom` is the raw slingshot vector; `launchFromPull` applies the pitch min-speed gate.
+
+## Hoop scoring probes
+
+- **`hoopLocal(h, x, y)`** — world → hoop-local transform (pitch `local`).
+- **`throughHoop(h, ball)`** — swish gate when ball crosses the rim ellipse from below.
+- **`rimHit(h, ball)`** — elastic rim bounce; mutates `ball` velocity and sets `h.wobble`.
+
+## Flight tick ordering (pitch parity)
+
+Each flying frame in the web client (and server replay) should run probes in this order:
+
+1. **`stepProjectileSubsteps`** — gravity + L/R screen walls (integrator)
+2. **`rimHit(source)`**, **`rimHit(target)`** — rim elastic bounce
+3. **`collideObstacles`** — single live obstacle (#18)
+4. **`throughHoop(target)`** — if true, dispatch `throughHoop` to RunFSM → scored
+
+Aim preview (`predictPath`) omits steps 2–4. While `mode=aiming`, the ball never integrates as a free projectile.
 
 ## Aim preview vs obstacles
 
@@ -60,21 +84,37 @@ import {
   cloneProjectile,
   collideObstacles,
   FIXED_DT,
+  launchFromPull,
+  rimHit,
   stepProjectile,
   stepProjectileSubsteps,
+  throughHoop,
+  type Hoop,
   type Obstacle,
 } from "@trickshot/physics";
 
 // 1. Reconstruct launch velocity from logged aim input
-const aim = aimFrom(origin, finger, worldWidth, worldHeight);
-const ball = cloneProjectile({ x: origin.x, y: origin.y, vx: aim.x, vy: aim.y });
+const launch = launchFromPull(origin, finger, worldWidth, worldHeight);
+if (!launch) return; // weak tap — stay in aiming
+const ball = cloneProjectile({
+  x: origin.x,
+  y: origin.y,
+  vx: launch.vx,
+  vy: launch.vy,
+});
 const obstacles: Obstacle[] = []; // from logged shot layout
+const source: Hoop = { x: 0, y: 0, ang: 0, wobble: 0 };
+const target: Hoop = { x: 0, y: 0, ang: 0, wobble: 0 };
 
-// 2. Step with fixed sub-steps for determinism
+// 2. Step with fixed sub-steps for determinism (see flight tick ordering above)
 for (const frameDt of inputLog.frameDts) {
   stepProjectileSubsteps(ball, frameDt, worldWidth);
+  rimHit(source, ball);
+  rimHit(target, ball);
   collideObstacles(obstacles, ball, frameDt);
-  // rim / through-hoop hooks stay in web until #19
+  if (throughHoop(target, ball)) {
+    // dispatch throughHoop to RunFSM
+  }
 }
 ```
 
