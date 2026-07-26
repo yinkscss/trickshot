@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import {
   RunFSM,
   allowsContinue,
+  createInputLogRecorder,
   createScoreState,
   dailySeedFromUtcDate,
   generateShotLayout,
@@ -11,6 +12,7 @@ import {
   type ScoreState,
   type Side,
 } from "@trickshot/logic";
+import { PHYSICS_BUILD_ID } from "@trickshot/physics";
 import { makeHoop } from "../game/layout";
 import {
   beginDunkTransition,
@@ -56,11 +58,16 @@ export class PlayScene extends Phaser.Scene {
   private hintText!: Phaser.GameObjects.Text;
   private continueText!: Phaser.GameObjects.Text;
 
-  private readonly runFsm = new RunFSM("casual");
   private readonly runSeed =
     typeof globalThis.crypto?.randomUUID === "function"
       ? globalThis.crypto.randomUUID()
       : `casual-${Date.now()}`;
+  private readonly inputLog = createInputLogRecorder({
+    seed: this.runSeed,
+    mode: "casual",
+    physicsBuildId: PHYSICS_BUILD_ID,
+  });
+  private readonly runFsm = new RunFSM("casual");
   private score = 0;
   private side = 1;
   private scoreState: ScoreState = createScoreState();
@@ -261,6 +268,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private dispatchMiss(): void {
+    this.inputLog.record({ type: "out_of_bounds" }, this.time.now);
     this.scoreState = reduceScoreEvent(this.scoreState, { type: "miss" });
     this.dragging = false;
     this.dragPt = null;
@@ -273,6 +281,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private resetRun(): void {
+    this.inputLog.record({ type: "continue_accept" }, this.time.now);
     this.showHint = true;
     this.continueText.setText("TAP TO RETRY");
     this.scoreState = reduceScoreEvent(this.scoreState, {
@@ -292,6 +301,7 @@ export class PlayScene extends Phaser.Scene {
     this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
     this.dragging = true;
     this.dragPt = p;
+    this.inputLog.record({ type: "pointer_down", x: p.x, y: p.y }, pointer.time);
     this.aim = aimFrom(this.aimOrigin, p, this.W, this.H);
     this.showHint = false;
   }
@@ -299,6 +309,10 @@ export class PlayScene extends Phaser.Scene {
   private onMove(pointer: Phaser.Input.Pointer): void {
     if (!this.dragging || this.runFsm.runState !== "aiming") return;
     this.dragPt = { x: pointer.worldX, y: pointer.worldY };
+    this.inputLog.record(
+      { type: "pointer_move", x: pointer.worldX, y: pointer.worldY },
+      pointer.time,
+    );
     this.aim = aimFrom(this.aimOrigin, this.dragPt, this.W, this.H);
   }
 
@@ -317,11 +331,27 @@ export class PlayScene extends Phaser.Scene {
       minSpeed: MIN_SHOT,
     });
     if (!result.accepted) {
+      this.inputLog.record(
+        { type: "pointer_up", x: pointer.worldX, y: pointer.worldY },
+        pointer.time,
+      );
       this.aim = { x: 0, y: 0, pull: 0 };
       if (this.runFsm.state.score === 0) this.showHint = true;
       return;
     }
 
+    this.inputLog.record(
+      {
+        type: "release",
+        vx: this.aim.x,
+        vy: this.aim.y,
+        originX: this.aimOrigin.x,
+        originY: this.aimOrigin.y,
+        x: pointer.worldX,
+        y: pointer.worldY,
+      },
+      pointer.time,
+    );
     this.applyRunResult(result);
     this.aim = { x: 0, y: 0, pull: 0 };
     this.dragPt = null;
@@ -392,6 +422,7 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     this.applyRunResult(this.runFsm.dispatch({ type: "throughHoop" }, time));
+    this.inputLog.record({ type: "through_hoop" }, time);
     this.scoreState = reduceScoreEvent(this.scoreState, { type: "dunk" });
     this.scoreText.setText(String(this.scoreState.score));
   }

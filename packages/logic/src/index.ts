@@ -22,6 +22,20 @@ export {
 } from "./rng.js";
 
 export {
+  InputLogRecorder,
+  createInputLogRecorder,
+  type InputLogRecorderOptions,
+  type RecordFrameResult,
+} from "./input-log-recorder.js";
+
+export {
+  prepareShotFromSeed,
+  replayRunFromInputLog,
+  restoreRunFromReplaySnapshot,
+  type ReplayRunResult,
+} from "./input-log-replay.js";
+
+export {
   buildObstacles,
   generateShotLayout,
   layoutForSide,
