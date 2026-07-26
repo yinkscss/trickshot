@@ -1,0 +1,25 @@
+{
+  "name": "trickshot",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Trick Shot — precision chain-hoop arcade on Celo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @trickshot/web",
+    "dev:api": "npm run dev -w @trickshot/api",
+    "build": "npm run build -w @trickshot/shared && npm run build -w @trickshot/web && npm run build -w @trickshot/api",
+    "build:web": "npm run build -w @trickshot/shared && npm run build -w @trickshot/web",
+    "build:api": "npm run build -w @trickshot/shared && npm run build -w @trickshot/api",
+    "typecheck": "npm run typecheck -w @trickshot/shared && npm run typecheck -w @trickshot/web && npm run typecheck -w @trickshot/api",
+    "test": "npm run test -w @trickshot/shared --if-present && npm run test -w @trickshot/api --if-present",
+    "contracts:build": "forge build --root contracts",
+    "contracts:test": "forge test --root contracts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@10"
+}
