@@ -17,6 +17,8 @@ describe("seamless dunk transition", () => {
     const { transition } = beginDunkTransition({
       side: 1,
       score: 3,
+      seed: "transition-test",
+      mode: "casual",
       width: W,
       height: H,
       source,
@@ -48,6 +50,8 @@ describe("seamless dunk transition", () => {
     const { side, transition } = beginDunkTransition({
       side: 1,
       score: 4,
+      seed: "transition-test",
+      mode: "casual",
       width: W,
       height: H,
       source,

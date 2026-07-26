@@ -4,66 +4,15 @@ import {
   hypot,
   type Projectile,
 } from "@trickshot/physics";
+import {
+  buildObstacles,
+  type BumperObstacle,
+  type Obstacle,
+  type WallObstacle,
+} from "@trickshot/logic";
 
-/** Alpha live types — wall peg + bumper disc (pitch post-launch roster stays out). */
-export type WallObstacle = {
-  type: "wall";
-  x: number;
-  y: number;
-  h: number;
-  w: number;
-};
-
-export type BumperObstacle = {
-  type: "bumper";
-  x: number;
-  y: number;
-  r: number;
-  pulse: number;
-};
-
-export type Obstacle = WallObstacle | BumperObstacle;
-
-/**
- * Exactly one obstacle per shot after the clean tutorial (score ≥ 1).
- * Placement is deterministic (skill path, no RNG brick walls).
- */
-export function buildObstacles(
-  sx: number,
-  sy: number,
-  tx: number,
-  ty: number,
-  score: number,
-  worldWidth: number,
-): Obstacle[] {
-  if (score < 1) return [];
-
-  const midX = (sx + tx) / 2;
-  const midY = (sy + ty) / 2;
-
-  // Odd scores → wall peg (bank); even → bumper disc
-  if (score % 2 === 1) {
-    return [
-      {
-        type: "wall",
-        x: midX + (sx < tx ? -worldWidth * 0.06 : worldWidth * 0.06),
-        y: midY,
-        h: 90,
-        w: 7,
-      },
-    ];
-  }
-
-  return [
-    {
-      type: "bumper",
-      x: midX,
-      y: midY,
-      r: 22,
-      pulse: 0,
-    },
-  ];
-}
+export type { BumperObstacle, Obstacle, WallObstacle };
+export { buildObstacles };
 
 /** Pitch `segmentBounce` — shared by wall peg (and future segment obstacles). */
 export function segmentBounce(

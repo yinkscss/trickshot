@@ -1,5 +1,10 @@
-import { layoutForSide, makeHoop, type ShotLayout } from "./layout";
-import { buildObstacles, type Obstacle } from "../physics/obstacles";
+import {
+  generateShotLayout,
+  nextSide,
+  type Obstacle,
+  type ShotLayout,
+} from "@trickshot/logic";
+import { makeHoop } from "./layout";
 import type { Hoop, Projectile } from "../physics";
 
 export interface Pose2 {
@@ -49,14 +54,23 @@ export function mixRimCss(t: number): string {
 export function beginDunkTransition(args: {
   side: number;
   score: number;
+  seed: string | number;
+  mode: "casual" | "daily" | "tournament";
   width: number;
   height: number;
   source: Hoop;
   target: Hoop;
   obstacles: Obstacle[];
 }): { side: number; transition: DunkTransition; layout: ShotLayout } {
-  const side = args.side * -1;
-  const L = layoutForSide(side, args.score, args.width, args.height);
+  const side = nextSide(args.side as -1 | 1);
+  const L = generateShotLayout({
+    side,
+    score: args.score,
+    seed: args.seed,
+    mode: args.mode,
+    width: args.width,
+    height: args.height,
+  });
   const carrier = args.target;
   const leaving = args.source;
 
@@ -64,12 +78,12 @@ export function beginDunkTransition(args: {
     t: 0,
     dur: 0.58,
     carryFrom: { x: carrier.x, y: carrier.y, ang: carrier.ang },
-    carryTo: { x: L.sx, y: L.sy, ang: L.sourceAng },
+    carryTo: { x: L.source.x, y: L.source.y, ang: L.source.ang },
     leaveFrom: { x: leaving.x, y: leaving.y, ang: leaving.ang },
     leaveTo: { x: leaving.x, y: args.height + 90, ang: leaving.ang },
-    arriveFrom: { x: L.tx, y: L.ty - 140, ang: L.targetAng },
-    arriveTo: { x: L.tx, y: L.ty, ang: L.targetAng },
-    nextObstacles: buildObstacles(L.sx, L.sy, L.tx, L.ty, args.score, args.width),
+    arriveFrom: { x: L.goal.x, y: L.goal.y - 140, ang: L.goal.ang },
+    arriveTo: { x: L.goal.x, y: L.goal.y, ang: L.goal.ang },
+    nextObstacles: L.obstacles.map((o) => ({ ...o })),
     oldObstacles: args.obstacles.map((o) => ({ ...o })),
     carry: null,
     leave: null,
