@@ -479,35 +479,65 @@
     return applyWallBounce(p, false);
   }
 
+  // World-space drag → hoop-local pull (net stretches toward finger)
+  function netPullForHoop(h) {
+    if (!S.drag || !S.dragPt || !h) return { lx: 0, ly: 0, amt: 0 };
+    const wx = S.dragPt.x - h.x;
+    const wy = S.dragPt.y - h.y;
+    const c = Math.cos(-h.ang);
+    const s = Math.sin(-h.ang);
+    const lx = wx * c - wy * s;
+    const ly = wx * s + wy * c;
+    const amt = clamp(hypot(wx, wy) / maxPull(), 0, 1);
+    return { lx, ly, amt };
+  }
+
   // ——— NET: woven pouch with diamond mesh + thick steel rim ———
   function drawHoop(h, color, opts = {}) {
-    const { withBall = false } = opts;
+    const { withBall = false, pullNet = false } = opts;
     const { x, y, ang } = h;
     const wob = h.wobble || 0;
+    const pull = pullNet ? netPullForHoop(h) : { lx: 0, ly: 0, amt: 0 };
+
+    // Slight rim tip into the pull (reads as the whole basket leaning)
+    const tip = pull.amt * 0.22;
+    const tipAng = ang + Math.atan2(pull.lx, 40) * tip;
 
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(ang);
+    ctx.rotate(tipAng);
 
     // Contact shadow on court
     ctx.beginPath();
-    ctx.ellipse(2, 10, RX * 0.95, RY * 1.1, 0, 0, Math.PI * 2);
+    ctx.ellipse(2 + pull.lx * pull.amt * 0.04, 10 + pull.ly * pull.amt * 0.04, RX * 0.95, RY * 1.1, 0, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0,0,0,0.08)";
     ctx.fill();
 
     // Back half of rim (steel behind net/ball)
     strokeRimArc(color, Math.PI, 0, true, 8);
 
-    // Net bag (between back and front rim)
-    drawWovenNet(wob);
+    // Net bag — this is what stretches on drag (not the ball)
+    drawWovenNet(wob, pull);
 
     if (withBall) {
       ctx.restore();
-      drawFireAura(S.ball.x, S.ball.y, BR);
-      drawMarble(S.ball.x, S.ball.y, BR);
+      // Ball stays seated in the rim; net takes the drag juice
+      const bx = S.ball.x;
+      const by = S.ball.y;
+      if (!(pullNet && S.drag)) drawFireAura(bx, by, BR);
+      else {
+        const g = ctx.createRadialGradient(bx, by, 2, bx, by, BR * 1.6);
+        g.addColorStop(0, "rgba(78,203,255,0.18)");
+        g.addColorStop(1, "rgba(78,203,255,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(bx, by, BR * 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      drawMarble(bx, by, BR);
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(ang);
+      ctx.rotate(tipAng);
     }
 
     // Front half of rim on top
@@ -539,27 +569,38 @@
     ctx.stroke();
   }
 
-  function drawWovenNet(wob) {
-    // Classic basketball net: diamond mesh pouch hanging from the rim
-    const depth = 52 + wob * 16;
+  function drawWovenNet(wob, pull = { lx: 0, ly: 0, amt: 0 }) {
+    // Classic basketball net: diamond mesh pouch — stretches toward drag
+    const amt = pull.amt || 0;
+    const depth = 52 + wob * 16 + amt * 28;
     const attachY = RY * 0.35;
     const topW = RX * 0.92;
-    const botW = RX * 0.28;
-    const cols = 8; // vertical cords
-    const rows = 5; // diamond bands
+    const botW = RX * (0.28 - amt * 0.06);
+    const cols = 8;
+    const rows = 5;
+    // How hard the pouch is yanked toward the finger (local space)
+    const yankX = (pull.lx || 0) * 0.55;
+    const yankY = (pull.ly || 0) * 0.55;
 
     function pt(i, j) {
       const u = i / (cols - 1);
       const v = j / rows;
       const spread = topW + (botW - topW) * v;
-      const x = -spread + u * spread * 2;
-      const y = attachY + v * depth + wob * v * 8;
-      // Soft belly so it reads as fabric, not a flat triangle
+      let x = -spread + u * spread * 2;
+      let y = attachY + v * depth + wob * v * 8;
       const belly = Math.sin(u * Math.PI) * (4 + v * 6);
-      return { x: x * (1 - v * 0.04), y: y + belly * 0.15 };
+      x *= 1 - v * 0.04;
+      y += belly * 0.15;
+      // Fabric stretch: rim stays put (v=0), bottom follows the drag
+      const falloff = v * v * amt;
+      x += yankX * falloff;
+      y += yankY * falloff;
+      // Pinch sides inward as you pull (elastic net)
+      x *= 1 - falloff * 0.12;
+      return { x, y };
     }
 
-    // Subtle bag shade (low alpha — mesh must stay the hero)
+    // Soft bag shade
     ctx.beginPath();
     ctx.moveTo(pt(0, 0).x, pt(0, 0).y);
     for (let i = 1; i < cols; i++) {
@@ -569,13 +610,13 @@
     ctx.lineTo(pt(cols - 1, rows).x, pt(cols - 1, rows).y);
     ctx.lineTo(pt(0, rows).x, pt(0, rows).y);
     ctx.closePath();
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillStyle = `rgba(255,255,255,${0.2 + amt * 0.12})`;
     ctx.fill();
 
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // Vertical cords from rim loops → bottom
+    // Vertical cords
     ctx.strokeStyle = "rgba(255,255,255,0.98)";
     ctx.lineWidth = 2.3;
     for (let i = 0; i < cols; i++) {
@@ -589,7 +630,7 @@
       ctx.stroke();
     }
 
-    // Horizontal / diamond bands (the “net” look)
+    // Horizontal bands
     ctx.lineWidth = 2.05;
     for (let j = 1; j <= rows; j++) {
       ctx.beginPath();
@@ -601,7 +642,7 @@
       ctx.stroke();
     }
 
-    // Crossing diagonals → diamond cells
+    // Diamond weave
     ctx.lineWidth = 1.7;
     ctx.strokeStyle = "rgba(255,255,255,0.9)";
     for (let j = 0; j < rows; j++) {
@@ -612,7 +653,6 @@
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
         ctx.stroke();
-
         const c = pt(i + 1, j);
         const d = pt(i, j + 1);
         ctx.beginPath();
@@ -632,15 +672,41 @@
       ctx.stroke();
     }
 
-    // Bottom gather ring
+    // Bottom gather
     const bl = pt(0, rows);
     const br = pt(cols - 1, rows);
+    const bm = pt((cols - 1) / 2, rows);
     ctx.beginPath();
     ctx.moveTo(bl.x, bl.y);
-    ctx.quadraticCurveTo(0, depth + attachY + 6 + wob * 8, br.x, br.y);
+    ctx.quadraticCurveTo(bm.x, bm.y + 6 + wob * 8, br.x, br.y);
     ctx.strokeStyle = "rgba(255,255,255,0.95)";
     ctx.lineWidth = 2.2;
     ctx.stroke();
+
+    // Elastic “fire” trail — white net diamonds yanked behind the stretch
+    if (amt > 0.08) {
+      const tip = pt((cols - 1) / 2, rows);
+      const n = 5 + (amt * 6) | 0;
+      for (let k = 1; k <= n; k++) {
+        const t = k / n;
+        const px = tip.x + yankX * t * 0.85 * amt;
+        const py = tip.y + yankY * t * 0.85 * amt;
+        const s = (5 + (1 - t) * 10) * (0.55 + amt * 0.6);
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(Math.atan2(yankY, yankX) + Math.PI / 2);
+        ctx.globalAlpha = (1 - t) * 0.75 * amt;
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.moveTo(0, -s * 1.3);
+        ctx.lineTo(s * 0.55, 0);
+        ctx.lineTo(0, s * 0.7);
+        ctx.lineTo(-s * 0.55, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    }
   }
 
   function drawFireAura(x, y, r) {
@@ -1254,16 +1320,10 @@
     }
 
     if (S.mode === "aim" && S.source) {
-      if (S.drag && S.dragPt) {
-        // Pull ball toward finger (slingshot stretch) — launch still uses aimOrigin
-        const stretch = 0.32;
-        S.ball.x = S.aimOrigin.x + (S.dragPt.x - S.aimOrigin.x) * stretch;
-        S.ball.y = S.aimOrigin.y + (S.dragPt.y - S.aimOrigin.y) * stretch;
-      } else {
-        S.aimOrigin = { x: S.source.x, y: S.source.y - 1 };
-        S.ball.x = S.aimOrigin.x;
-        S.ball.y = S.aimOrigin.y + Math.sin(performance.now() / 260) * 1.2;
-      }
+      // Ball stays seated — the NET takes the drag stretch
+      S.aimOrigin = { x: S.source.x, y: S.source.y - 1 };
+      S.ball.x = S.aimOrigin.x;
+      S.ball.y = S.aimOrigin.y + (S.drag ? 0 : Math.sin(performance.now() / 260) * 1.2);
     }
 
     if (S.mode === "flying") {
@@ -1381,9 +1441,12 @@
 
       if (S.starOn && S.star) drawStarIcon(S.star.x, S.star.y, 12, performance.now() / 800);
 
-      // Source BELOW
+      // Source BELOW — pullNet stretches the mesh toward the finger
       if (S.source) {
-        drawHoop(S.source, GREY, { withBall: S.mode === "aim" });
+        drawHoop(S.source, GREY, {
+          withBall: S.mode === "aim",
+          pullNet: S.mode === "aim" && S.drag,
+        });
       }
 
       // Target ABOVE — during swish hold the ball nests in this net
