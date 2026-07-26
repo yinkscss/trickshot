@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trick Shot — Product Requirements Document</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8e9ec;
+      --bg-deep: #d8dade;
+      --ink: #1a1c22;
+      --ink-soft: #4a4e5a;
+      --muted: #7a7f8c;
+      --rim: #ff5a1f;
+      --rim-deep: #e03f0a;
+      --ball: #2b6cff;
+      --ball-glow: #5aa0ff;
+      --star: #ffc107;
+      --card: #f4f5f7;
+      --line: rgba(26, 28, 34, 0.1);
+      --good: #1f8a4c;
+      --warn: #b45309;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, rgba(255, 90, 31, 0.12), transparent 50%),
+        radial-gradient(ellipse 60% 40% at 90% 0%, rgba(43, 108, 255, 0.1), transparent 45%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 5rem;
+    }
+
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      margin-bottom: 2rem;
+      padding: 0.75rem 1rem;
+      background: rgba(244, 245, 247, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      position: sticky;
+      top: 0.75rem;
+      z-index: 10;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .nav a {
+      color: var(--ink-soft);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .nav a:hover { color: var(--rim); }
+
+    .hero {
+      position: relative;
+      padding: 2.5rem 0 2rem;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .eyebrow {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--rim);
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: clamp(3.5rem, 12vw, 6.5rem);
+      line-height: 0.9;
+      letter-spacing: 0.02em;
+      color: var(--ink);
+      margin-bottom: 0.35rem;
+    }
+
+    h1 .accent {
+      color: var(--rim);
+      display: inline-block;
+      transform: skewX(-6deg);
+    }
+
+    .tagline {
+      font-size: 1.15rem;
+      color: var(--ink-soft);
+      max-width: 36rem;
+      margin: 1rem 0 1.5rem;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .chip {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink-soft);
+    }
+
+    .chip.hot {
+      background: var(--rim);
+      border-color: var(--rim);
+      color: #fff;
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 0.7rem 1.15rem;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+
+    .btn-primary {
+      background: var(--ball);
+      color: #fff;
+      box-shadow: 0 4px 0 var(--ink);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 2px solid var(--ink);
+    }
+
+    section {
+      margin: 2.75rem 0;
+      scroll-margin-top: 4rem;
+    }
+
+    h2 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 2.1rem;
+      letter-spacing: 0.03em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.65rem;
+    }
+
+    h2 .num {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.85rem;
+      color: var(--rim);
+      font-weight: 500;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin: 1.5rem 0 0.65rem;
+      color: var(--ink);
+    }
+
+    p { margin-bottom: 0.9rem; color: var(--ink-soft); }
+
+    strong { color: var(--ink); font-weight: 600; }
+
+    ul, ol {
+      margin: 0.5rem 0 1rem 1.25rem;
+      color: var(--ink-soft);
+    }
+
+    li { margin-bottom: 0.4rem; }
+
+    .callout {
+      background: var(--card);
+      border-left: 4px solid var(--rim);
+      padding: 1rem 1.15rem;
+      border-radius: 0 12px 12px 0;
+      margin: 1.25rem 0;
+    }
+
+    .callout.blue { border-left-color: var(--ball); }
+    .callout.warn { border-left-color: var(--warn); }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    @media (max-width: 700px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .nav { border-radius: 16px; }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.15rem 1.25rem;
+    }
+
+    .card h3 { margin-top: 0; }
+
+    .persona {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .persona::after {
+      content: "";
+      position: absolute;
+      top: -20px;
+      right: -20px;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--ball-glow), transparent 70%);
+      opacity: 0.35;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 1rem 0 1.5rem;
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.75rem 0.9rem;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: var(--ink);
+      color: #fff;
+      font-weight: 500;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    td:last-child { font-weight: 600; color: var(--ink); }
+
+    .timeline {
+      display: grid;
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .phase {
+      display: grid;
+      grid-template-columns: 7rem 1fr auto;
+      gap: 1rem;
+      align-items: center;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.9rem 1.1rem;
+    }
+
+    .phase .label {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 1.35rem;
+      color: var(--rim);
+      letter-spacing: 0.04em;
+    }
+
+    .phase .when {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 640px) {
+      .phase {
+        grid-template-columns: 1fr;
+        gap: 0.35rem;
+      }
+    }
+
+    .loop {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin: 1.25rem 0;
+    }
+
+    .loop-step {
+      background: var(--ink);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.55rem 0.85rem;
+      border-radius: 8px;
+    }
+
+    .loop-step.orange { background: var(--rim); }
+    .loop-step.blue { background: var(--ball); }
+
+    .loop-arrow {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .questions ol { counter-reset: q; list-style: none; margin-left: 0; }
+    .questions li {
+      counter-increment: q;
+      position: relative;
+      padding: 1rem 1rem 1rem 3.25rem;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin-bottom: 0.65rem;
+    }
+    .questions li::before {
+      content: "Q" counter(q);
+      position: absolute;
+      left: 0.9rem;
+      top: 1rem;
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 1.2rem;
+      color: var(--rim);
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    .hoop-deco {
+      position: absolute;
+      right: 0;
+      top: 1.5rem;
+      width: 110px;
+      height: 110px;
+      opacity: 0.9;
+      pointer-events: none;
+    }
+
+    @media (max-width: 700px) {
+      .hoop-deco { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav" aria-label="Sections">
+      <a href="#summary">Summary</a>
+      <a href="#opportunity">Opportunity</a>
+      <a href="#goals">Goals</a>
+      <a href="#gameplay">Gameplay</a>
+      <a href="#monetization">Monetization</a>
+      <a href="#tech">Tech</a>
+      <a href="#rollout">Rollout</a>
+      <a href="#questions">Open Qs</a>
+      <a href="animation-pitch.html">Animation Pitch →</a>
+    </nav>
+
+    <header class="hero">
+      <p class="eyebrow">Product Requirements · Draft v1.0 · July 26, 2026</p>
+      <h1>TRICK <span class="accent">SHOT</span></h1>
+      <p class="tagline">
+        A precision chain-hoop arcade game on Celo — drag, release, chain the dunks.
+        Monetized through powerups, pay-to-continue, season pass, and 15% tournament rake.
+      </p>
+      <div class="meta">
+        <span class="chip hot">Celo L2</span>
+        <span class="chip">Mobile-first</span>
+        <span class="chip">cUSD / USDC</span>
+        <span class="chip">MiniPay ready</span>
+        <span class="chip">Status: Draft</span>
+      </div>
+      <div class="links">
+        <a class="btn btn-primary" href="animation-pitch.html">Watch gameplay pitch</a>
+        <a class="btn btn-ghost" href="PRD_TrickShot_Celo.md">Raw Markdown PRD</a>
+      </div>
+      <svg class="hoop-deco" viewBox="0 0 100 100" aria-hidden="true">
+        <ellipse cx="50" cy="42" rx="36" ry="12" fill="none" stroke="#ff5a1f" stroke-width="6"/>
+        <path d="M20 48 Q50 88 80 48" fill="none" stroke="#fff" stroke-width="2.5" opacity="0.85"/>
+        <path d="M28 50 Q50 78 72 50" fill="none" stroke="#fff" stroke-width="2" opacity="0.55"/>
+        <circle cx="50" cy="28" r="9" fill="#2b6cff"/>
+      </svg>
+    </header>
+
+    <section id="summary">
+      <h2><span class="num">01</span> Executive Summary</h2>
+      <p>
+        <strong>Trick Shot</strong> is a mobile-first, single-input arcade game — a precision
+        “swing the ball through a chain of hoops” loop in the spirit of Ketchapp-style drop/swing games —
+        built on <strong>Celo</strong>, an Ethereum L2 optimized for low-cost, mobile-friendly stablecoin payments.
+      </p>
+      <div class="callout">
+        Unlike cosmetic-and-boast models, Trick Shot’s monetization is built around three levers:
+        <strong>powerup purchases</strong>, <strong>pay-to-continue</strong>, and a <strong>season pass</strong> —
+        layered on skill-based tournaments where the house takes a <strong>15% rake of the prize pool</strong>.
+      </div>
+      <p>
+        Celo remains the settlement layer: sub-cent fees, gas payable in cUSD/USDC/USDT, ~1s blocks,
+        and distribution via Opera’s MiniPay wallet (16M+ wallets across 65+ countries).
+      </p>
+    </section>
+
+    <section id="opportunity">
+      <h2><span class="num">02</span> Problem &amp; Opportunity</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Problem</h3>
+          <p>
+            Endless-chain arcade games (Dunk Shot, Helix Jump, Stack) monetize almost entirely through
+            interstitial ads and app-store IAP for continues. That caps margins (15–30% store take),
+            makes revenge-spend opaque, and leaves no verifiable competitive layer the studio owns.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Opportunity</h3>
+          <ul>
+            <li>Sell powerups &amp; continues in stablecoins at near-zero gas — a $0.49 continue doesn’t lose 30¢ to processors.</li>
+            <li>Run transparent on-chain tournaments with a fixed, visible house rake.</li>
+            <li>Use MiniPay as a low-CAC channel where stablecoin rails beat cards.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="goals">
+      <h2><span class="num">03</span> Goals &amp; Success Metrics</h2>
+      <h3>Business Goals</h3>
+      <ol>
+        <li>F2P core loop with paid powerups, continues, and seasonal subscription — positive unit economics within 2 quarters.</li>
+        <li>Skill-based tournaments with <strong>15% house rake</strong> as recurring revenue.</li>
+        <li>Day-30 retention ≥ 20% and paying-user rate ≥ 6%, with continues as the primary conversion moment.</li>
+      </ol>
+
+      <h3>Non-Goals (v1)</h3>
+      <ul>
+        <li>No peer-to-peer wagering pools — fixed entry fee, pooled prize, house rake only.</li>
+        <li>No speculative token or yield product at launch.</li>
+        <li>No randomized paid loot boxes — fixed-price, fixed-effect purchases only.</li>
+      </ul>
+
+      <h3>KPIs (Month 6)</h3>
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Target</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>MAU</td><td>200,000</td></tr>
+          <tr><td>D1 / D7 / D30 retention</td><td>42% / 23% / 20%</td></tr>
+          <tr><td>Paying user %</td><td>6–9%</td></tr>
+          <tr><td>ARPPU / month</td><td>$7–11</td></tr>
+          <tr><td>Continue purchase rate (per miss session)</td><td>8–12%</td></tr>
+          <tr><td>Season pass attach rate</td><td>10–15% of MAU</td></tr>
+          <tr><td>Tournament entry rate (of payers)</td><td>20–30%</td></tr>
+          <tr><td>Avg on-chain tx cost / purchase</td><td>&lt; $0.01</td></tr>
+          <tr><td>Gross margin per tx</td><td>&gt; 90%</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="personas">
+      <h2><span class="num">04</span> Target Users</h2>
+      <div class="grid-2">
+        <div class="card persona">
+          <h3>Casual Mobile Gamer</h3>
+          <p>Primary · global. 5–10 min sessions. Small continue spends mid-run. Wallet should be invisible.</p>
+        </div>
+        <div class="card persona">
+          <h3>MiniPay Stablecoin User</h3>
+          <p>Acquisition wedge. Already holds cUSD/USDT. Values near-zero fees for frequent micro-purchases.</p>
+        </div>
+      </div>
+      <div class="card persona" style="margin-top:1rem">
+        <h3>Competitive Chain-Runner</h3>
+        <p>Plays for leaderboards and tournament pools. Buys powerups deliberately to push personal-best chains.</p>
+      </div>
+    </section>
+
+    <section id="gameplay">
+      <h2><span class="num">05</span> Core Gameplay</h2>
+      <div class="loop" aria-label="Core loop">
+        <span class="loop-step">Hold hoop</span>
+        <span class="loop-arrow">→</span>
+        <span class="loop-step orange">Drag aim</span>
+        <span class="loop-arrow">→</span>
+        <span class="loop-step blue">Release</span>
+        <span class="loop-arrow">→</span>
+        <span class="loop-step">Swish / star</span>
+        <span class="loop-arrow">→</span>
+        <span class="loop-step orange">Next hoop</span>
+        <span class="loop-arrow">→</span>
+        <span class="loop-step">Chain++</span>
+      </div>
+
+      <h3>5.1 Core Loop (v1)</h3>
+      <ul>
+        <li><strong>Single-input swing:</strong> drag back to aim, release to launch from the current hoop into the next.</li>
+        <li><strong>Chain scoring:</strong> consecutive clean swings build a multiplier; a miss ends the run unless continue/shield.</li>
+        <li><strong>Obstacles:</strong> spinner bars, moving hoops, narrow-gap hoops that raise the skill ceiling.</li>
+        <li><strong>Stars:</strong> pickups along the chain feed soft currency (cosmetics &amp; minor powerups without cUSD).</li>
+        <li>Daily challenges, streaks, local/global leaderboards.</li>
+      </ul>
+
+      <h3>5.2 Web3-Native Features</h3>
+      <ul>
+        <li><strong>Invisible wallet</strong> via Magic.link — email/social/phone, non-custodial behind the scenes.</li>
+        <li><strong>On-chain run attestation:</strong> verified best chain minted as optional shareable proof.</li>
+        <li><strong>Tournaments:</strong> cUSD entry, contract-escrowed prize pool, automated payouts; house takes <strong>15% rake</strong>, verifiable on-chain before entry.</li>
+      </ul>
+
+      <div class="callout blue">
+        See the <a href="animation-pitch.html"><strong>animation pitch</strong></a> for the feel of drag-to-aim,
+        trajectory dots, ball trail, hoop teleport, and star collect — the juice that makes the chain addictive.
+      </div>
+    </section>
+
+    <section id="monetization">
+      <h2><span class="num">06</span> Business Model</h2>
+      <table>
+        <thead>
+          <tr><th>Stream</th><th>Mechanic</th><th>Price (cUSD)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Powerups</td><td>Aim assist, slow-drop, wide-hoop, magnet-star</td><td>$0.29–$1.99</td></tr>
+          <tr><td>Continue</td><td>Resume after miss (paid) or watch-to-continue (ad)</td><td>$0.49–$1.49</td></tr>
+          <tr><td>Season Pass</td><td>Cosmetics, soft currency, exclusive skins</td><td>$4.99 / season</td></tr>
+          <tr><td>Tournament entry</td><td>Timed leaderboard; <strong>15% house rake</strong></td><td>$1–$20</td></tr>
+          <tr><td>Cosmetic shop</td><td>Ball/hoop/trail skins (ERC-1155)</td><td>$0.99–$5.99</td></tr>
+          <tr><td>Marketplace royalty</td><td>Secondary cosmetic sales</td><td>5%</td></tr>
+          <tr><td>Ads</td><td>Rewarded only (continue / soft currency)</td><td>eCPM</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Why on-chain rails win</h3>
+      <ul>
+        <li><strong>Micro-tx viability:</strong> $0.49 continues clear at almost any volume with sub-cent gas.</li>
+        <li><strong>Transparent rake:</strong> prize pool + 15% cut settle via public contract — auditable trust.</li>
+        <li><strong>Fast settlement:</strong> ~1s blocks keep continue purchases inside flow state.</li>
+        <li><strong>Store fee avoidance:</strong> web/PWA checkout where policy allows keeps 15–30% cut off high-frequency buys.</li>
+      </ul>
+
+      <div class="callout warn">
+        <strong>Guardrails:</strong> Powerups banned in Tournament mode. Continues allowed but score-penalized.
+        Daily spend caps + self-exclusion. No RNG purchases. Legal review per jurisdiction required before real-money tournaments —
+        this PRD is not legal advice.
+      </div>
+    </section>
+
+    <section id="tech">
+      <h2><span class="num">07</span> Tech Stack</h2>
+      <table>
+        <thead>
+          <tr><th>Layer</th><th>Choice</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Blockchain</td><td>Celo (Ethereum L2)</td></tr>
+          <tr><td>Wallet / Auth</td><td>Magic.link (embedded wallets)</td></tr>
+          <tr><td>Indexing</td><td>Goldsky (Subgraphs + Mirror)</td></tr>
+          <tr><td>Contracts</td><td>Solidity, Foundry, OpenZeppelin</td></tr>
+          <tr><td>Tournament escrow</td><td>Purpose-built: 85% / 15% split on settlement</td></tr>
+          <tr><td>Game client</td><td>Unity (native) + PWA (web checkout)</td></tr>
+          <tr><td>Backend</td><td>Node.js / TypeScript, Postgres, Redis</td></tr>
+          <tr><td>Hosting</td><td>AWS/GCP + Cloudflare</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Security &amp; Compliance</h3>
+      <ul>
+        <li>Mandatory audit before mainnet — especially tournament escrow holding pooled funds.</li>
+        <li>KYC/AML for payouts above thresholds; pluggable compliance provider.</li>
+        <li>Server-authoritative score validation (anti-cheat for paid tournaments).</li>
+        <li>Responsible spending: caps/cooldowns on continues and tournament entries.</li>
+      </ul>
+    </section>
+
+    <section id="rollout">
+      <h2><span class="num">08</span> Rollout Plan</h2>
+      <div class="timeline">
+        <div class="phase">
+          <div class="label">Alpha</div>
+          <div>Core swing mechanic + wallet onboarding + powerup shop (testnet)</div>
+          <div class="when">Weeks 1–8</div>
+        </div>
+        <div class="phase">
+          <div class="label">Closed Beta</div>
+          <div>Pay-to-continue, season pass, Goldsky leaderboards, mainnet cUSD</div>
+          <div class="when">Weeks 9–14</div>
+        </div>
+        <div class="phase">
+          <div class="label">Launch</div>
+          <div>Tournaments live with escrow/payout; MiniPay co-marketing</div>
+          <div class="when">Week 16</div>
+        </div>
+        <div class="phase">
+          <div class="label">Post</div>
+          <div>Cosmetic marketplace, attestation minting, expand stake tiers</div>
+          <div class="when">Ongoing</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="questions" class="questions">
+      <h2><span class="num">09</span> Open Questions</h2>
+      <ol>
+        <li>What max tournament entry / prize pool pre-KYC, and at what threshold is KYC mandatory?</li>
+        <li>Does continue-penalty (fixed point deduction) preserve skill-based classification, or should continues be disabled in paid tournaments?</li>
+        <li>Which jurisdictions are in launch scope, and has legal confirmed the 15% rake / payout-curve model in each?</li>
+        <li>Flat continue price vs. scaling with chain length? Needs a data-backed pricing test before Beta.</li>
+      </ol>
+    </section>
+
+    <footer>
+      Document owner: Senior Product Manager · Trick Shot on Celo · July 2026<br />
+      Reconfirm Celo / Goldsky / Magic.link vendor details before engineering commitment.
+    </footer>
+  </div>
+</body>
+</html>

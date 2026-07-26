@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trick Shot — Gameplay Animation Pitch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --court: #e6e7eb;
+      --ink: #1a1c22;
+      --muted: #6b7080;
+      --rim: #ff5a1f;
+      --rim-dim: #9aa0ab;
+      --ball: #2b6cff;
+      --ball-light: #6eb0ff;
+      --star: #ffc107;
+      --panel: #101218;
+      --panel-2: #1c1f2a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      background: var(--panel);
+      color: #eef0f5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 2.5rem;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .page { grid-template-columns: 1fr; }
+    }
+
+    .eyebrow {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--rim);
+      margin-bottom: 0.6rem;
+    }
+
+    h1 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: clamp(2.8rem, 7vw, 4.2rem);
+      line-height: 0.95;
+      letter-spacing: 0.03em;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 span { color: var(--rim); }
+
+    .lead {
+      color: #a8b0c2;
+      font-size: 1.05rem;
+      max-width: 34rem;
+      line-height: 1.55;
+      margin-bottom: 1.75rem;
+    }
+
+    .beats {
+      display: grid;
+      gap: 0.65rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .beat {
+      display: grid;
+      grid-template-columns: 2.4rem 1fr;
+      gap: 0.85rem;
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      background: var(--panel-2);
+      border: 1px solid transparent;
+      transition: border-color 0.25s, background 0.25s, transform 0.25s;
+      cursor: default;
+    }
+
+    .beat.active {
+      border-color: rgba(255, 90, 31, 0.55);
+      background: linear-gradient(90deg, rgba(255, 90, 31, 0.12), var(--panel-2));
+      transform: translateX(4px);
+    }
+
+    .beat .n {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 1.4rem;
+      color: var(--rim);
+      line-height: 1;
+      padding-top: 0.15rem;
+    }
+
+    .beat h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .beat p {
+      font-size: 0.82rem;
+      color: #8b93a8;
+      line-height: 1.4;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-bottom: 1.25rem;
+    }
+
+    button {
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.88rem;
+      border: none;
+      border-radius: 10px;
+      padding: 0.7rem 1.1rem;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .btn-play {
+      background: var(--rim);
+      color: #fff;
+      box-shadow: 0 4px 0 #b33a0a;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: #c5cad8;
+      border: 1.5px solid #3a4050;
+    }
+
+    .links a {
+      color: var(--ball-light);
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .links a:hover { text-decoration: underline; }
+
+    /* Phone stage */
+    .stage-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 1.5rem;
+    }
+
+    .phone {
+      width: min(320px, 86vw);
+      aspect-ratio: 9 / 16;
+      background: var(--court);
+      border-radius: 36px;
+      border: 3px solid #2a2e3a;
+      box-shadow:
+        0 0 0 8px #0a0b10,
+        0 30px 80px rgba(0, 0, 0, 0.55),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .notch {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90px;
+      height: 22px;
+      background: #0a0b10;
+      border-radius: 14px;
+      z-index: 20;
+    }
+
+    .hud {
+      position: absolute;
+      top: 42px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 15;
+      color: #5c6270;
+    }
+
+    .pause {
+      width: 14px;
+      height: 16px;
+      display: flex;
+      gap: 3px;
+    }
+
+    .pause span {
+      width: 3px;
+      height: 100%;
+      background: #8a909c;
+      border-radius: 1px;
+    }
+
+    .stars {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: #3a3f4c;
+    }
+
+    .stars svg { width: 16px; height: 16px; }
+
+    .chain-num {
+      position: absolute;
+      top: 28%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 7.5rem;
+      color: rgba(90, 96, 110, 0.22);
+      letter-spacing: 0.02em;
+      z-index: 1;
+      transition: opacity 0.4s, transform 0.5s;
+      pointer-events: none;
+      line-height: 1;
+    }
+
+    .chain-num.bump {
+      animation: chainBump 0.45s ease;
+    }
+
+    @keyframes chainBump {
+      0% { transform: translate(-50%, -50%) scale(1); }
+      40% { transform: translate(-50%, -50%) scale(1.12); opacity: 0.35; }
+      100% { transform: translate(-50%, -50%) scale(1); }
+    }
+
+    .dots-progress {
+      position: absolute;
+      top: calc(28% + 3.2rem);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      z-index: 1;
+    }
+
+    .dots-progress i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(90, 96, 110, 0.28);
+    }
+
+    .dots-progress i.on { background: var(--rim); }
+
+    /* Game entities */
+    .hoop {
+      position: absolute;
+      width: 72px;
+      height: 56px;
+      z-index: 5;
+      transform: translate(-50%, -50%);
+    }
+
+    .hoop .rim {
+      position: absolute;
+      left: 50%;
+      top: 18px;
+      width: 58px;
+      height: 18px;
+      border: 5px solid var(--rim);
+      border-radius: 50%;
+      transform: translateX(-50%) rotateX(55deg);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
+    }
+
+    .hoop.source .rim { border-color: var(--rim-dim); }
+
+    .hoop .net {
+      position: absolute;
+      left: 50%;
+      top: 28px;
+      width: 42px;
+      height: 28px;
+      transform: translateX(-50%);
+      background:
+        linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.7) 40%, rgba(255,255,255,0.7) 42%, transparent 42%),
+        linear-gradient(-135deg, transparent 40%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0.55) 42%, transparent 42%),
+        linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+      background-size: 10px 10px, 10px 10px, 100% 100%;
+      clip-path: polygon(8% 0, 92% 0, 78% 100%, 22% 100%);
+      opacity: 0.9;
+      transform-origin: top center;
+    }
+
+    .hoop.swish .net {
+      animation: netSwish 0.45s ease;
+    }
+
+    @keyframes netSwish {
+      0% { transform: translateX(-50%) scaleY(1); }
+      35% { transform: translateX(-50%) scaleY(1.25) skewX(4deg); }
+      100% { transform: translateX(-50%) scaleY(1); }
+    }
+
+    .hoop.ghost {
+      opacity: 0.28;
+      filter: grayscale(1);
+      pointer-events: none;
+      transition: opacity 0.4s, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .hoop.teleport-out {
+      animation: hoopOut 0.4s ease forwards;
+    }
+
+    .hoop.teleport-in {
+      animation: hoopIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes hoopOut {
+      to { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+    }
+
+    @keyframes hoopIn {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(-12deg); }
+      to { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+    }
+
+    .ball {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, var(--ball-light), var(--ball) 55%, #1a4ecc);
+      box-shadow: 0 0 12px rgba(43, 108, 255, 0.55);
+      transform: translate(-50%, -50%);
+      z-index: 12;
+      will-change: left, top;
+    }
+
+    .ball.charged {
+      box-shadow: 0 0 0 8px rgba(43, 108, 255, 0.15), 0 0 18px rgba(43, 108, 255, 0.7);
+      animation: chargePulse 0.8s ease infinite;
+    }
+
+    @keyframes chargePulse {
+      50% { box-shadow: 0 0 0 12px rgba(43, 108, 255, 0.08), 0 0 22px rgba(43, 108, 255, 0.85); }
+    }
+
+    .trail {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 8;
+    }
+
+    .trail span {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: var(--ball-light);
+      opacity: 0.55;
+      transform: translate(-50%, -50%) rotate(45deg);
+      border-radius: 3px;
+      animation: trailFade 0.45s ease forwards;
+    }
+
+    @keyframes trailFade {
+      to { opacity: 0; transform: translate(-50%, -50%) rotate(45deg) scale(0.3); }
+    }
+
+    .aim-dots {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 7;
+    }
+
+    .aim-dots span {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--rim);
+      transform: translate(-50%, -50%);
+      opacity: 0;
+    }
+
+    .aim-dots.show span {
+      animation: dotPop 0.35s ease forwards;
+    }
+
+    .aim-dots.show span:nth-child(1) { animation-delay: 0.02s; }
+    .aim-dots.show span:nth-child(2) { animation-delay: 0.05s; }
+    .aim-dots.show span:nth-child(3) { animation-delay: 0.08s; }
+    .aim-dots.show span:nth-child(4) { animation-delay: 0.11s; }
+    .aim-dots.show span:nth-child(5) { animation-delay: 0.14s; }
+    .aim-dots.show span:nth-child(6) { animation-delay: 0.17s; }
+    .aim-dots.show span:nth-child(7) { animation-delay: 0.2s; }
+    .aim-dots.show span:nth-child(8) { animation-delay: 0.23s; }
+
+    @keyframes dotPop {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+      to { opacity: 0.95; transform: translate(-50%, -50%) scale(1); }
+    }
+
+    .pickup-star {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      transform: translate(-50%, -50%);
+      z-index: 6;
+      filter: drop-shadow(0 0 4px rgba(255, 193, 7, 0.6));
+      transition: opacity 0.2s, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .pickup-star.collect {
+      opacity: 0;
+      transform: translate(-50%, -120%) scale(1.6);
+    }
+
+    .drag-hint {
+      position: absolute;
+      z-index: 14;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: #7a8090;
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 0.08em;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    .drag-hint.show { opacity: 1; }
+
+    .drag-hint .finger {
+      width: 22px;
+      height: 28px;
+      border: 2.5px solid #8a909c;
+      border-radius: 10px 10px 12px 12px;
+      position: relative;
+      animation: fingerDrag 1.1s ease-in-out infinite;
+    }
+
+    .drag-hint .finger::after {
+      content: "";
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      width: 8px;
+      height: 10px;
+      border: 2.5px solid #8a909c;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      transform: translateX(-50%);
+    }
+
+    @keyframes fingerDrag {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(14px); }
+    }
+
+    .spark {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--star);
+      z-index: 16;
+      pointer-events: none;
+      animation: sparkOut 0.55s ease forwards;
+    }
+
+    @keyframes sparkOut {
+      to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
+    }
+
+    .caption {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.75rem;
+      color: #7a8296;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    .obstacle {
+      position: absolute;
+      width: 4px;
+      height: 70px;
+      background: var(--rim);
+      border-radius: 2px;
+      transform: translate(-50%, -50%);
+      z-index: 4;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .obstacle.show { opacity: 1; }
+
+    .continue-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(16, 18, 24, 0.55);
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .continue-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .continue-card {
+      background: #fff;
+      color: var(--ink);
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      text-align: center;
+      width: 78%;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+      transform: scale(0.9);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .continue-overlay.show .continue-card { transform: scale(1); }
+
+    .continue-card h4 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 1.6rem;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+    }
+
+    .continue-card p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 0.85rem;
+    }
+
+    .continue-card .price {
+      display: inline-block;
+      background: var(--rim);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      justify-content: center;
+      font-size: 0.72rem;
+      color: #6d758a;
+      font-family: "IBM Plex Mono", monospace;
+    }
+
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .legend .l-ball::before { background: var(--ball); }
+    .legend .l-rim::before { background: var(--rim); }
+    .legend .l-star::before { background: var(--star); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="copy">
+      <p class="eyebrow">Animation Pitch · Core Loop</p>
+      <h1>FEEL THE <span>CHAIN</span></h1>
+      <p class="lead">
+        Hyper-casual precision: drag opposite the shot, release into the next hoop,
+        collect the star, watch the rim teleport, and keep the chain alive.
+        This pitch is the motion language for Unity / PWA implementation.
+      </p>
+
+      <div class="controls">
+        <button class="btn-play" id="btnPlay" type="button">Play loop</button>
+        <button class="btn-ghost" id="btnPause" type="button">Pause</button>
+        <button class="btn-ghost" id="btnStep" type="button">Next beat</button>
+      </div>
+
+      <div class="beats" id="beats">
+        <div class="beat active" data-beat="0">
+          <div class="n">01</div>
+          <div>
+            <h3>Rest in the hoop</h3>
+            <p>Ball settles in the source rim. Soft charge glow. Finger cue: “DRAG IT!”</p>
+          </div>
+        </div>
+        <div class="beat" data-beat="1">
+          <div class="n">02</div>
+          <div>
+            <h3>Aim with orange dots</h3>
+            <p>Pull back reveals a parabolic dotted trajectory toward the orange target rim.</p>
+          </div>
+        </div>
+        <div class="beat" data-beat="2">
+          <div class="n">03</div>
+          <div>
+            <h3>Release → blue trail</h3>
+            <p>Ball launches with diamond motion trail. Source hoop gets a subtle recoil blur.</p>
+          </div>
+        </div>
+        <div class="beat" data-beat="3">
+          <div class="n">04</div>
+          <div>
+            <h3>Swish + star pop</h3>
+            <p>Net stretch, star collects into HUD, chain number bumps. Satisfying juice.</p>
+          </div>
+        </div>
+        <div class="beat" data-beat="4">
+          <div class="n">05</div>
+          <div>
+            <h3>Hoop teleport</h3>
+            <p>Old target becomes source; new orange rim snaps in with ghost trail. Loop repeats.</p>
+          </div>
+        </div>
+        <div class="beat" data-beat="5">
+          <div class="n">06</div>
+          <div>
+            <h3>Miss → continue</h3>
+            <p>Optional beat: miss triggers pay-to-continue ($0.49 cUSD) — primary conversion moment.</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="links">
+        <a href="prd.html">← Full HTML PRD</a>
+        &nbsp;·&nbsp;
+        <a href="PRD_TrickShot_Celo.md">Markdown source</a>
+      </p>
+    </div>
+
+    <div class="stage-wrap">
+      <div class="phone" id="phone" aria-label="Gameplay animation stage">
+        <div class="notch"></div>
+        <div class="hud">
+          <div class="pause" aria-hidden="true"><span></span><span></span></div>
+          <div class="stars">
+            <span id="starCount">12</span>
+            <svg viewBox="0 0 24 24" fill="#ffc107" aria-hidden="true">
+              <path d="M12 2l2.9 6.9L22 10l-5 4.4L18.2 22 12 18.2 5.8 22 7 14.4 2 10l7.1-1.1L12 2z"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="chain-num" id="chainNum">42</div>
+        <div class="dots-progress" aria-hidden="true">
+          <i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i>
+        </div>
+
+        <div class="aim-dots" id="aimDots"></div>
+        <div class="trail" id="trail"></div>
+        <div class="obstacle" id="obstacle"></div>
+
+        <div class="hoop source" id="hoopSource">
+          <div class="rim"></div>
+          <div class="net"></div>
+        </div>
+        <div class="hoop ghost" id="hoopGhost">
+          <div class="rim"></div>
+          <div class="net"></div>
+        </div>
+        <div class="hoop target" id="hoopTarget">
+          <div class="rim"></div>
+          <div class="net"></div>
+        </div>
+
+        <svg class="pickup-star" id="pickupStar" viewBox="0 0 24 24" fill="#ffc107">
+          <path d="M12 2l2.9 6.9L22 10l-5 4.4L18.2 22 12 18.2 5.8 22 7 14.4 2 10l7.1-1.1L12 2z"/>
+        </svg>
+
+        <div class="ball" id="ball"></div>
+
+        <div class="drag-hint" id="dragHint">
+          <div class="finger"></div>
+          DRAG IT!
+        </div>
+
+        <div class="continue-overlay" id="continueOverlay">
+          <div class="continue-card">
+            <h4>CONTINUE?</h4>
+            <p>Keep the chain. One more shot.</p>
+            <span class="price">0.49 cUSD</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="caption" id="caption">Idle — ball rests in source hoop</p>
+      <div class="legend">
+        <span class="l-ball">ball + trail</span>
+        <span class="l-rim">target rim</span>
+        <span class="l-star">star pickup</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const phone = document.getElementById("phone");
+    const ball = document.getElementById("ball");
+    const hoopSource = document.getElementById("hoopSource");
+    const hoopTarget = document.getElementById("hoopTarget");
+    const hoopGhost = document.getElementById("hoopGhost");
+    const aimDots = document.getElementById("aimDots");
+    const trail = document.getElementById("trail");
+    const pickupStar = document.getElementById("pickupStar");
+    const dragHint = document.getElementById("dragHint");
+    const chainNum = document.getElementById("chainNum");
+    const starCount = document.getElementById("starCount");
+    const caption = document.getElementById("caption");
+    const continueOverlay = document.getElementById("continueOverlay");
+    const obstacle = document.getElementById("obstacle");
+    const beats = [...document.querySelectorAll(".beat")];
+
+    const layouts = [
+      { source: { x: 38, y: 68 }, target: { x: 68, y: 38 }, star: { x: 68, y: 30 } },
+      { source: { x: 68, y: 62 }, target: { x: 32, y: 34 }, star: { x: 32, y: 26 } },
+      { source: { x: 32, y: 58 }, target: { x: 72, y: 42 }, star: { x: 72, y: 34 } },
+    ];
+
+    let layoutIdx = 0;
+    let chain = 42;
+    let stars = 12;
+    let beat = 0;
+    let playing = true;
+    let timer = null;
+    let animFrame = null;
+
+    function pct(el, x, y) {
+      el.style.left = x + "%";
+      el.style.top = y + "%";
+    }
+
+    function placeLayout() {
+      const L = layouts[layoutIdx % layouts.length];
+      pct(hoopSource, L.source.x, L.source.y);
+      pct(hoopTarget, L.target.x, L.target.y);
+      pct(hoopGhost, L.source.x - 8, L.source.y + 4);
+      pct(pickupStar, L.star.x, L.star.y);
+      pickupStar.classList.remove("collect");
+      pickupStar.style.opacity = "1";
+      pct(ball, L.source.x, L.source.y - 2);
+      pct(dragHint, L.source.x, L.source.y + 12);
+      pct(obstacle, 50, 48);
+      ball.classList.remove("charged");
+      hoopTarget.classList.remove("swish");
+      hoopSource.classList.remove("swish");
+      continueOverlay.classList.remove("show");
+      obstacle.classList.remove("show");
+      aimDots.classList.remove("show");
+      aimDots.innerHTML = "";
+      trail.innerHTML = "";
+    }
+
+    function setBeat(n) {
+      beat = n;
+      beats.forEach((b) => b.classList.toggle("active", Number(b.dataset.beat) === n));
+    }
+
+    function quadratic(p0, p1, p2, t) {
+      const u = 1 - t;
+      return {
+        x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+        y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
+      };
+    }
+
+    function buildAimDots() {
+      const L = layouts[layoutIdx % layouts.length];
+      const p0 = { x: L.source.x, y: L.source.y - 2 };
+      const p2 = { x: L.target.x, y: L.target.y };
+      const p1 = {
+        x: (p0.x + p2.x) / 2 + (p0.x < p2.x ? -8 : 8),
+        y: Math.min(p0.y, p2.y) - 18,
+      };
+      aimDots.innerHTML = "";
+      for (let i = 1; i <= 8; i++) {
+        const t = i / 9;
+        const p = quadratic(p0, p1, p2, t);
+        const s = document.createElement("span");
+        s.style.left = p.x + "%";
+        s.style.top = p.y + "%";
+        aimDots.appendChild(s);
+      }
+    }
+
+    function dropTrail(x, y) {
+      const s = document.createElement("span");
+      s.style.left = x + "%";
+      s.style.top = y + "%";
+      trail.appendChild(s);
+      setTimeout(() => s.remove(), 450);
+    }
+
+    function sparks(x, y) {
+      const rect = phone.getBoundingClientRect();
+      for (let i = 0; i < 8; i++) {
+        const sp = document.createElement("div");
+        sp.className = "spark";
+        const angle = (Math.PI * 2 * i) / 8;
+        const dist = 18 + Math.random() * 22;
+        sp.style.left = x + "%";
+        sp.style.top = y + "%";
+        sp.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+        sp.style.setProperty("--dy", Math.sin(angle) * dist + "px");
+        phone.appendChild(sp);
+        setTimeout(() => sp.remove(), 550);
+      }
+    }
+
+    function wait(ms) {
+      return new Promise((resolve) => {
+        timer = setTimeout(resolve, ms);
+      });
+    }
+
+    function animateBall(from, to, duration) {
+      return new Promise((resolve) => {
+        const p0 = from;
+        const p2 = to;
+        const p1 = {
+          x: (p0.x + p2.x) / 2 + (p0.x < p2.x ? -10 : 10),
+          y: Math.min(p0.y, p2.y) - 22,
+        };
+        const start = performance.now();
+        let lastTrail = 0;
+
+        function frame(now) {
+          if (!playing) {
+            animFrame = requestAnimationFrame(frame);
+            return;
+          }
+          const t = Math.min(1, (now - start) / duration);
+          const ease = 1 - Math.pow(1 - t, 2);
+          const p = quadratic(p0, p1, p2, ease);
+          pct(ball, p.x, p.y);
+          if (now - lastTrail > 40) {
+            dropTrail(p.x, p.y);
+            lastTrail = now;
+          }
+          if (t < 1) {
+            animFrame = requestAnimationFrame(frame);
+          } else {
+            resolve();
+          }
+        }
+        animFrame = requestAnimationFrame(frame);
+      });
+    }
+
+    async function runLoop() {
+      while (playing) {
+        placeLayout();
+        const L = layouts[layoutIdx % layouts.length];
+
+        // Beat 0 — rest
+        setBeat(0);
+        caption.textContent = "Rest — charge glow + drag cue";
+        ball.classList.add("charged");
+        dragHint.classList.add("show");
+        await wait(1600);
+        if (!playing) break;
+
+        // Beat 1 — aim
+        setBeat(1);
+        caption.textContent = "Aim — orange dotted parabola";
+        dragHint.classList.remove("show");
+        buildAimDots();
+        aimDots.classList.add("show");
+        await wait(1400);
+        if (!playing) break;
+
+        // Beat 2 — launch
+        setBeat(2);
+        caption.textContent = "Launch — diamond blue trail";
+        ball.classList.remove("charged");
+        aimDots.classList.remove("show");
+        hoopSource.style.filter = "blur(0.6px)";
+        setTimeout(() => { hoopSource.style.filter = ""; }, 280);
+        await animateBall(
+          { x: L.source.x, y: L.source.y - 2 },
+          { x: L.target.x, y: L.target.y },
+          900
+        );
+        if (!playing) break;
+
+        // Beat 3 — swish + star
+        setBeat(3);
+        caption.textContent = "Swish — net stretch + star collect";
+        hoopTarget.classList.add("swish");
+        pickupStar.classList.add("collect");
+        sparks(L.target.x, L.target.y);
+        stars += 1;
+        starCount.textContent = String(stars);
+        chain += 1;
+        chainNum.textContent = String(chain);
+        chainNum.classList.remove("bump");
+        void chainNum.offsetWidth;
+        chainNum.classList.add("bump");
+        await wait(900);
+        if (!playing) break;
+
+        // Beat 4 — teleport / next hoop
+        setBeat(4);
+        caption.textContent = "Teleport — new target rim snaps in";
+        hoopTarget.classList.add("teleport-out");
+        await wait(350);
+        layoutIdx += 1;
+        const next = layouts[layoutIdx % layouts.length];
+        // Ball stays; previous target becomes source visually
+        hoopTarget.classList.remove("teleport-out");
+        placeLayout();
+        // Override: ball already at new source
+        pct(ball, next.source.x, next.source.y - 2);
+        hoopTarget.classList.add("teleport-in");
+        hoopGhost.style.left = (next.source.x - 10) + "%";
+        hoopGhost.style.top = (next.source.y + 6) + "%";
+        await wait(700);
+        hoopTarget.classList.remove("teleport-in");
+        if (!playing) break;
+
+        // Every 3rd loop show continue beat
+        if (layoutIdx % 3 === 0) {
+          setBeat(5);
+          caption.textContent = "Miss path — pay-to-continue conversion";
+          obstacle.classList.add("show");
+          await wait(600);
+          // fake miss fly-off
+          await animateBall(
+            { x: next.source.x, y: next.source.y - 2 },
+            { x: next.source.x + 35, y: 110 },
+            700
+          );
+          continueOverlay.classList.add("show");
+          await wait(2200);
+          continueOverlay.classList.remove("show");
+          // recover
+          placeLayout();
+          pct(ball, layouts[layoutIdx % layouts.length].source.x, layouts[layoutIdx % layouts.length].source.y - 2);
+        }
+
+        await wait(400);
+      }
+    }
+
+    function stopTimers() {
+      if (timer) clearTimeout(timer);
+      if (animFrame) cancelAnimationFrame(animFrame);
+    }
+
+    document.getElementById("btnPlay").addEventListener("click", () => {
+      if (playing) return;
+      playing = true;
+      runLoop();
+    });
+
+    document.getElementById("btnPause").addEventListener("click", () => {
+      playing = false;
+      stopTimers();
+      caption.textContent = "Paused";
+    });
+
+    document.getElementById("btnStep").addEventListener("click", async () => {
+      playing = false;
+      stopTimers();
+      // Single advance through static beats for presentation
+      const nextBeat = (beat + 1) % 6;
+      placeLayout();
+      const L = layouts[layoutIdx % layouts.length];
+      setBeat(nextBeat);
+      dragHint.classList.remove("show");
+      aimDots.classList.remove("show");
+      continueOverlay.classList.remove("show");
+      obstacle.classList.remove("show");
+      ball.classList.remove("charged");
+
+      if (nextBeat === 0) {
+        ball.classList.add("charged");
+        dragHint.classList.add("show");
+        caption.textContent = "Rest — charge glow + drag cue";
+      } else if (nextBeat === 1) {
+        buildAimDots();
+        aimDots.classList.add("show");
+        caption.textContent = "Aim — orange dotted parabola";
+      } else if (nextBeat === 2) {
+        pct(ball, (L.source.x + L.target.x) / 2, Math.min(L.source.y, L.target.y) - 16);
+        dropTrail(ball.style.left.replace("%", "") * 1 || 50, 40);
+        caption.textContent = "Launch — mid-flight with trail";
+      } else if (nextBeat === 3) {
+        pct(ball, L.target.x, L.target.y);
+        hoopTarget.classList.add("swish");
+        pickupStar.classList.add("collect");
+        caption.textContent = "Swish — star collect";
+      } else if (nextBeat === 4) {
+        hoopGhost.style.opacity = "0.35";
+        caption.textContent = "Teleport — ghost trail of old rim";
+      } else {
+        continueOverlay.classList.add("show");
+        caption.textContent = "Continue — primary conversion UI";
+      }
+    });
+
+    placeLayout();
+    runLoop();
+  </script>
+</body>
+</html>

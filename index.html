@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trick Shot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg: #e8e9ec; --ink: #1a1c22; --rim: #ff5a1f; --ball: #2b6cff; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(255,90,31,.15), transparent 45%),
+        radial-gradient(ellipse at 80% 10%, rgba(43,108,255,.12), transparent 40%),
+        var(--bg);
+      color: var(--ink);
+      padding: 2rem;
+    }
+    main { max-width: 28rem; text-align: center; }
+    h1 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: clamp(3.5rem, 14vw, 5.5rem);
+      line-height: 0.9;
+      letter-spacing: 0.03em;
+      margin-bottom: 0.75rem;
+    }
+    h1 span { color: var(--rim); }
+    p { color: #4a4e5a; margin-bottom: 1.75rem; line-height: 1.5; }
+    .links { display: grid; gap: 0.75rem; }
+    a {
+      display: block;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 0.9rem 1.2rem;
+      border-radius: 12px;
+      transition: transform 0.15s;
+    }
+    a:hover { transform: translateY(-2px); }
+    .primary { background: var(--ball); color: #fff; box-shadow: 0 4px 0 #1a1c22; }
+    .secondary { background: var(--rim); color: #fff; box-shadow: 0 4px 0 #1a1c22; }
+    .ghost { border: 2px solid var(--ink); color: var(--ink); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>TRICK <span>SHOT</span></h1>
+    <p>Precision chain-hoop arcade on Celo. Product docs and gameplay pitch.</p>
+    <div class="links">
+      <a class="primary" href="docs/prd.html">Product Requirements (HTML)</a>
+      <a class="secondary" href="docs/animation-pitch.html">Gameplay Animation Pitch</a>
+      <a class="ghost" href="docs/PRD_TrickShot_Celo.md">Markdown PRD</a>
+    </div>
+  </main>
+</body>
+</html>
