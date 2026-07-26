@@ -25,6 +25,7 @@ Do not silently change these choices. Alpha+ engineering must follow this docume
 
 ## Product rules (aligned with PRD)
 
+- **Mode rules matrix:** authoritative per-mode policy in `@trickshot/shared` (`getModeRules`) — see [`packages/shared/README.md`](../packages/shared/README.md).
 - **Continues in paid tournaments:** **disabled** (`legal=no_continue_tourney`). Continues remain the primary conversion in casual/daily.
 - **Powerups in tournament mode:** banned.
 - **No loot-box RNG.** Prefer stablecoin micro-tx (cUSD/USDC).

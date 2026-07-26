@@ -4,6 +4,19 @@ Pure TypeScript gameplay logic for Trick Shot — no Phaser dependency.
 
 **Package choice:** `@trickshot/logic` lives in `packages/logic` (not `packages/shared/src/logic/`) so run FSM, future shot validators, and replay reducers can grow without bloating shared constants/types.
 
+## Mode rules matrix
+
+Per-mode policy lives in `@trickshot/shared` (`getModeRules`). Logic consumes it for FSM, powerups, seeds, and replay — **do not** add scattered `mode === "tournament"` checks.
+
+| Rule | casual | daily | tournament |
+|------|--------|-------|------------|
+| Continues | ✅ | ✅ | ❌ |
+| Powerups | ✅ | ✅ | ❌ |
+| Seed | `resolveRunSeed` → per-run uuid | UTC date | tournament id |
+| Stars | ✅ | ✅ | ✅ |
+
+See [`packages/shared/README.md`](../shared/README.md) for the full matrix and `assertCanContinue` / `assertCanUsePowerup` helpers.
+
 ## Run FSM (Alpha)
 
 Authoritative run lifecycle: aim → fly → score/miss → transition/continue.
@@ -24,7 +37,7 @@ stateDiagram-v2
   ended --> [*]
 ```
 
-**Tournament gate:** `offerContinue` is rejected when `mode === "tournament"` (`TOURNAMENT_ALLOWS_CONTINUES === false`). Miss flow must use `endRun` → `ended`.
+**Tournament gate:** `offerContinue` is rejected when `getModeRules(mode).allowsContinues === false`. Miss flow must use `endRun` → `ended`.
 
 ### API
 
@@ -55,6 +68,7 @@ Deterministic zigzag hoop placement and one-obstacle spawn rules (no Phaser).
 ### API
 
 - `createRng(seed)` / `dailySeedFromUtcDate(date?)` — seeded streams for casual & daily
+- `resolveRunSeed(mode, { runSeed, utcDate?, tournamentId? })` — mode-matrix seed resolution
 - `layoutForSide(side, score, width, height)` — source/goal/star poses
 - `generateShotLayout({ side, score, seed, mode, width, height })` — full shot (0 or 1 obstacle)
 - `buildObstacles(..., rng)` — low-level spawn when replay already has poses
@@ -85,7 +99,8 @@ Pitch-aligned dunk points, combo multipliers, and star economy — pure reducers
 - `comboMultiplier` / `dunkPoints` — point math
 - `shouldSpawnStar(fromScore, rngUnit)` — pitch `starOn` (90% or score &lt; 2)
 - `buildRunSummary({ mode, scoreState, ... })` — maps to `@trickshot/shared` `RunSummary`
-- `applyWideHoop` / `applySlowDrop` — powerup stubs; tournament hard-disabled
+- `applyWideHoop` / `applySlowDrop` — powerup stubs; gated by `getModeRules(mode).allowsPowerups`
+- `assertPowerupAllowed(mode, sku)` — shop confirm path; throws `ModePolicyError` in tournament
 
 ### Combo policy
 
@@ -124,7 +139,7 @@ Same `seed` + score progression + side → identical layouts, obstacles, and sta
 
 - Max **4096** frames, **512 KiB** serialized JSON (`INPUT_LOG_MAX_*` in shared).
 - Recorder stops appending when limits hit; sets `truncated: true` on finalize.
-- Tournament logs must not contain `continue_accept` (validator rejects).
+- Tournament logs must not contain `continue_accept` when `getModeRules(mode).allowsContinues === false`.
 
 ### RunSummary
 
