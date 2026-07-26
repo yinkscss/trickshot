@@ -1,4 +1,4 @@
-import type { GameMode, RunSummary } from "@trickshot/shared";
+import type { GameMode, InputLog, RunSummary } from "@trickshot/shared";
 
 /** Juice label thresholds (pitch `triggerComboAnim` / Alpha meta). */
 export type ComboLabel = null | "x2" | "x3" | "ON FIRE";
@@ -134,7 +134,7 @@ export function buildRunSummary(args: {
   continuesUsed: number;
   powerupsUsed?: string[];
   seed: string;
-  inputLog?: unknown;
+  inputLog?: InputLog;
 }): RunSummary {
   return {
     mode: args.mode,

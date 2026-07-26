@@ -97,3 +97,35 @@ Pitch-aligned dunk points, combo multipliers, and star economy — pure reducers
 | `collectStar` | — | +`STAR_POINTS`, +1 star |
 
 Thresholds: x2 @ 2, x3 @ 3, ON FIRE @ 4+ (multiplier caps at ×4).
+
+## Input log & hybrid replay (#23)
+
+Client recorder + server validator for `anticheat=hybrid`. Schema lives in `@trickshot/shared`; recorder/replay in `@trickshot/logic`.
+
+### Seeded RNG contract
+
+All layout randomness is derived — **no obstacle rolls stored in the log**:
+
+| Concern | Function | Key |
+|---------|----------|-----|
+| Obstacles / poses | `shotRng(seed, score, side, mode)` | `${mode}:${seed}:${score}:${side}` |
+| Star spawn | `shotRng(...).next()` → `prepareShot` | same stream, first draw |
+
+Same `seed` + score progression + side → identical layouts, obstacles, and star flags in browser and Node.
+
+### API
+
+- `createInputLogRecorder({ seed, mode, physicsBuildId })` — append-only client recorder
+- `replayRunFromInputLog(raw, { expectedPhysicsBuildId? })` — Node replay reducer
+- `validateInputLog` / `parseInputLog` — Zod schema in `@trickshot/shared`
+- `PHYSICS_BUILD_ID` — from `@trickshot/physics`; embedded in every log
+
+### Truncation policy
+
+- Max **4096** frames, **512 KiB** serialized JSON (`INPUT_LOG_MAX_*` in shared).
+- Recorder stops appending when limits hit; sets `truncated: true` on finalize.
+- Tournament logs must not contain `continue_accept` (validator rejects).
+
+### RunSummary
+
+`buildRunSummary({ ..., inputLog: recorder.finalize() })` — no client-declared score inside the log.
