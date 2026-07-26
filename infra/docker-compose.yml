@@ -1,20 +1,4 @@
-# Local Postgres + Redis for apps/api (Alpha scaffold)
-services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: trickshot
-      POSTGRES_PASSWORD: trickshot
-      POSTGRES_DB: trickshot
-    ports:
-      - "5432:5432"
-    volumes:
-      - trickshot_pg:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-volumes:
-  trickshot_pg:
+# Deprecated for Alpha backend.
+# Stack lock is backend=supabase — use `npx supabase start` instead of this compose file.
+# Kept only as a temporary reference; prefer deleting once Edge cutover is complete.
+services: {}

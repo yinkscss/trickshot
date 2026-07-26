@@ -8,8 +8,8 @@ Precision chain-hoop arcade game on **Celo** — drag, release, chain the dunks.
 
 ## Contributing (stack)
 
-- Honor lock IDs: `client=phaser_pwa`, `physics=custom_2d`, `chain=celo`, `wallet=magic`, `contracts=foundry`, `indexing=goldsky`, `backend=node_pg_redis`, `hosting=aws_cf`, `platforms=pwa_first`, `monetization=continue_powerup`, `anticheat=hybrid`, `legal=no_continue_tourney`.
-- **Out of scope without a lock review:** Unity primary client, Matter/Arcade as physics authority, non-Celo settlement, Magic replacement for v1, loot-box RNG, re-enabling tournament continues.
+- Honor lock IDs: `client=phaser_pwa`, `physics=custom_2d`, `chain=celo`, `wallet=magic`, `contracts=foundry`, `indexing=goldsky`, `backend=supabase`, `hosting=aws_cf`, `platforms=pwa_first`, `monetization=continue_powerup`, `anticheat=hybrid`, `legal=no_continue_tourney`.
+- **Out of scope without a lock review:** Unity primary client, Matter/Arcade as physics authority, non-Celo settlement, Magic replacement for v1, custom Node/Postgres/Redis instead of Supabase, loot-box RNG, re-enabling tournament continues.
 - Alpha testnet: **Celo Sepolia** `11142220`.
 - Prefer surgical PRs that match the [playable pitch](docs/animation-pitch.html) feel before adding features.
 
@@ -18,10 +18,11 @@ Precision chain-hoop arcade game on **Celo** — drag, release, chain the dunks.
 | Path | Role |
 |---|---|
 | `apps/web` | Phaser 3 PWA client |
-| `apps/api` | Node/TypeScript API (Postgres + Redis) |
+| `supabase/` | Supabase (Postgres migrations + Edge Functions) |
+| `apps/api` | Deprecated Fastify stub (migrate to Edge Functions) |
 | `contracts/` | Foundry + OpenZeppelin |
 | `packages/shared` | Shared types / economics constants |
-| `infra/` | Local docker-compose + hosting/Goldsky stubs |
+| `infra/` | Hosting + Goldsky stubs |
 | `docs/` | PRD, roadmap, playable pitch, stack lock |
 
 ## Quick start
@@ -34,24 +35,23 @@ npm run build -w @trickshot/shared
 # Game client (PWA)
 npm run dev:web
 
-# API health
-npm run dev:api
-
-# Local Postgres + Redis (optional)
-docker compose -f infra/docker-compose.yml up -d
+# Supabase local (Docker required)
+npx supabase start
+npx supabase status
 
 # Contracts
 git submodule update --init --recursive
 npm run contracts:test
 ```
 
-### Celo + Magic (Alpha)
+### Celo + Magic + Supabase (Alpha)
 
 | Item | Value |
 |---|---|
 | Testnet | **Celo Sepolia** — chain id `11142220` |
 | RPC (default) | `https://forno.celo-sepolia.celo-testnet.org` |
 | Wallet | Magic.link sandbox — set `MAGIC_*` / `VITE_MAGIC_PUBLISHABLE_KEY` in `.env` |
+| Backend | Supabase — set `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` |
 
 ## Docs
 

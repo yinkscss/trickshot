@@ -16,7 +16,7 @@ Do not silently change these choices. Alpha+ engineering must follow this docume
 | Wallet / auth | Magic.link embedded wallets | `wallet=magic` |
 | Smart contracts | Solidity + Foundry + OpenZeppelin | `contracts=foundry` |
 | On-chain indexing | Goldsky (Subgraphs + Mirror) | `indexing=goldsky` |
-| Backend | Node/TypeScript + Postgres + Redis | `backend=node_pg_redis` |
+| Backend | Supabase (Postgres + Edge Functions + client SDK) | `backend=supabase` |
 | Hosting | AWS/GCP + Cloudflare | `hosting=aws_cf` |
 | Launch platforms | PWA / MiniPay web first | `platforms=pwa_first` |
 | Monetization (v1) | Continues + powerups first | `monetization=continue_powerup` |
@@ -38,6 +38,7 @@ Require a new lock review — do not land in PRs:
 - Phaser Matter / Arcade Physics as gameplay authority
 - Non-Celo L1/L2 settlement for Alpha money paths
 - WalletConnect-primary onboarding replacing Magic for v1
+- Replacing Supabase with a custom Node/Postgres/Redis API without a lock review
 - Re-enabling tournament continues without counsel + lock update
 
 ## Network targets (Alpha)
@@ -60,11 +61,21 @@ See [animation-pitch.html](./animation-pitch.html):
 5. Seamless dunk → next-loop (carry hoop down, no hard teleport)
 6. Combo juice on chain (x2 / x3 / ON FIRE)
 
+## Backend notes (`backend=supabase`)
+
+- **Postgres** via Supabase (migrations in `supabase/migrations`).
+- **Edge Functions** for privileged paths (run verify, shop confirm, Magic session bridge).
+- **Client:** `@supabase/supabase-js` from `apps/web`.
+- **Auth for wallets remains Magic.link** (`wallet=magic`) — Supabase stores the user/wallet row after Magic verification; Supabase Auth is not the primary player login unless a future lock says so.
+- **Redis removed from lock** — use DB + Edge limits / optional later cache; do not reintroduce Redis without a lock review.
+- Legacy `apps/api` Fastify stub is deprecated; migrate routes into Supabase Edge Functions.
+
 ## Repo layout (scaffolded)
 
 ```
 apps/web          Phaser 3 + Vite PWA client
-apps/api          Node/TypeScript API (Postgres + Redis)
+supabase/         Supabase project (migrations, Edge Functions)
+apps/api          Deprecated Fastify stub (remove after Edge cutover)
 contracts/        Foundry + OpenZeppelin
 packages/shared   Shared types / constants
 infra/            Hosting + Goldsky stubs

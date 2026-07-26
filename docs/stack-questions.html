@@ -189,7 +189,7 @@
   </div>
 <script>
 (() => {
-  const STORAGE_KEY = "trickshot-stack-answers-v3";
+  const STORAGE_KEY = "trickshot-stack-answers-v4";
 
   const QUESTIONS = [
     {
@@ -265,10 +265,10 @@
       id: "backend",
       title: "Backend",
       hint: "Scores, anti-cheat, shop, season pass.",
-      prd: "node_pg_redis",
+      prd: "supabase",
       options: [
-        { id: "node_pg_redis", label: "Node/TypeScript + Postgres + Redis", note: "PRD default" },
-        { id: "supabase", label: "Supabase (Postgres + Edge)", note: "Faster MVP auth/DB" },
+        { id: "supabase", label: "Supabase (Postgres + Edge)", note: "Locked — STACK_LOCK default" },
+        { id: "node_pg_redis", label: "Node/TypeScript + Postgres + Redis", note: "Superseded — needs new lock review" },
         { id: "cf_workers", label: "Cloudflare Workers + D1/KV", note: "Edge-first, light ops" },
       ],
     },

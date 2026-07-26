@@ -642,7 +642,7 @@
           <tr><td>Tournament escrow</td><td>Purpose-built: 85% / 15% split on settlement</td><td>(contracts)</td></tr>
           <tr><td>Game client</td><td>Phaser 3 PWA / browser-first</td><td><code>client=phaser_pwa</code></td></tr>
           <tr><td>Physics / aim</td><td>Custom 2D integrator (pitch parity)</td><td><code>physics=custom_2d</code></td></tr>
-          <tr><td>Backend</td><td>Node.js / TypeScript, Postgres, Redis</td><td><code>backend=node_pg_redis</code></td></tr>
+          <tr><td>Backend</td><td>Supabase (Postgres + Edge Functions + JS client)</td><td><code>backend=supabase</code></td></tr>
           <tr><td>Hosting</td><td>AWS/GCP + Cloudflare</td><td><code>hosting=aws_cf</code></td></tr>
           <tr><td>Platforms</td><td>PWA / MiniPay web first</td><td><code>platforms=pwa_first</code></td></tr>
           <tr><td>Monetization (v1)</td><td>Continues + powerups first</td><td><code>monetization=continue_powerup</code></td></tr>
@@ -657,6 +657,7 @@
         <li>Phaser Matter / Arcade as gameplay physics authority</li>
         <li>Non-Celo L1/L2 settlement for Alpha money paths</li>
         <li>WalletConnect-primary onboarding replacing Magic for v1</li>
+        <li>Replacing Supabase with a custom Node/Postgres/Redis API without a lock review</li>
         <li>Loot-box / RNG paid rewards; re-enabling tournament continues without a new lock</li>
       </ul>
 
