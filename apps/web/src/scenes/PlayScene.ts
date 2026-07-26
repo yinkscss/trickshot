@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import type { GameMode } from "@trickshot/shared";
 import { layoutForSide, makeHoop } from "../game/layout";
 import {
   beginDunkTransition,
@@ -7,6 +8,18 @@ import {
   updateDunkTransition,
   type DunkTransition,
 } from "../game/transition";
+import {
+  casualSeed,
+  comboLabel,
+  dailySeed,
+  dunkScore,
+  getLocalLeaderboard,
+  recordLocalScore,
+  buildRunSummary,
+  shakeIntensity,
+  STAR_POINTS,
+  tournamentSeed,
+} from "../meta";
 import {
   BALL_RADIUS,
   MIN_SHOT,
@@ -28,31 +41,43 @@ import {
   type Projectile,
   type Vec2,
 } from "../physics";
+import { MetaHud } from "../ui/metaHud";
 
 const COURT = "#e8e8ea";
 const ORANGE = "#ff4d1a";
 const GREY = "#5f646e";
 const BALL_FILL = 0x1e5fff;
 const OBSTACLE_RED = 0xff3b30;
+const STAR_GOLD = 0xffc14d;
 
-type Mode = "aim" | "flying" | "scored" | "transition" | "continue";
+type Mode = "menu" | "aim" | "flying" | "scored" | "transition" | "continue" | "summary";
 
 /**
- * Pitch-parity core loop: zigzag climb, one obstacle per shot,
- * seamless dunk→next-loop handoff (no hard teleport).
+ * Pitch-parity core loop + Alpha meta: combo juice, continue stub,
+ * daily seed, local leaderboard, RunSummary.
  */
 export class PlayScene extends Phaser.Scene {
   private gfx!: Phaser.GameObjects.Graphics;
   private scoreText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
-  private continueText!: Phaser.GameObjects.Text;
+  private comboText!: Phaser.GameObjects.Text;
+  private hud!: MetaHud;
 
-  private mode: Mode = "aim";
+  private mode: Mode = "menu";
+  private gameMode: GameMode = "casual";
+  private seed = casualSeed("boot");
+  /** Unbroken dunk count (layout / chain). */
+  private dunks = 0;
+  /** Soft score points. */
   private score = 0;
+  private stars = 0;
+  private continuesUsed = 0;
   private side = 1;
 
   private source: Hoop | null = null;
   private target: Hoop | null = null;
+  private starPos: Vec2 | null = null;
+  private starTaken = false;
   private obstacles: Obstacle[] = [];
   private transition: DunkTransition | null = null;
   private ball: Projectile = { x: 0, y: 0, vx: 0, vy: 0 };
@@ -89,24 +114,33 @@ export class PlayScene extends Phaser.Scene {
         color: "#9aa0aa",
       })
       .setOrigin(0.5);
-    this.continueText = this.add
-      .text(0, 0, "TAP TO RETRY", {
+    this.comboText = this.add
+      .text(0, 0, "", {
         fontFamily: "Nunito, system-ui, sans-serif",
-        fontStyle: "800",
-        fontSize: "18px",
-        color: "#5f646e",
+        fontStyle: "900",
+        fontSize: "42px",
+        color: "#ff5a1f",
       })
       .setOrigin(0.5)
-      .setVisible(false);
+      .setAlpha(0);
+
+    const parent = (this.game.config.parent as HTMLElement | null) ?? document.body;
+    this.hud = new MetaHud(parent, {
+      onSelectMode: (m) => this.startMode(m),
+      onContinueStub: () => this.applyContinueStub(),
+      onEndRun: () => this.endRun(),
+      onDismissSummary: () => this.backToMenu(),
+      onPlayAgain: () => this.backToMenu(),
+    });
 
     this.syncSize();
-    this.place(0);
+    this.hud.showModePicker();
+    this.mode = "menu";
 
     this.input.on("pointerdown", this.onDown, this);
     this.input.on("pointermove", this.onMove, this);
     this.input.on("pointerup", this.onUp, this);
     this.input.on("pointerupoutside", this.onUp, this);
-
     this.scale.on("resize", this.onResize, this);
   }
 
@@ -116,7 +150,7 @@ export class PlayScene extends Phaser.Scene {
     const prevH = this.H;
     this.syncSize();
     if (this.mode === "aim" && prevW > 0 && prevH > 0) {
-      this.place(this.score, false);
+      this.place(this.dunks, false);
     }
   };
 
@@ -125,18 +159,61 @@ export class PlayScene extends Phaser.Scene {
     this.H = this.scale.height;
     this.scoreText.setFontSize(Math.floor(this.W * 0.38));
     this.scoreText.setPosition(this.W / 2, this.H * 0.22);
-    this.continueText.setPosition(this.W / 2, this.H * 0.55);
+    this.comboText.setPosition(this.W / 2, this.H * 0.38);
+  }
+
+  private startMode(mode: GameMode): void {
+    this.gameMode = mode;
+    if (mode === "daily") this.seed = dailySeed();
+    else if (mode === "tournament") this.seed = tournamentSeed(String(Date.now()));
+    else this.seed = casualSeed(String(Date.now()));
+
+    this.dunks = 0;
+    this.score = 0;
+    this.stars = 0;
+    this.continuesUsed = 0;
+    this.side = 1;
+    this.showHint = true;
+    this.scoreText.setText("0");
+    this.hud.setModeLabel(mode);
+    this.hud.setStars(0);
+    this.hud.hideModePicker();
+    this.hud.hideContinue();
+    this.hud.hideSummary();
+    this.place(0);
+  }
+
+  private backToMenu(): void {
+    this.mode = "menu";
+    this.dragging = false;
+    this.source = null;
+    this.target = null;
+    this.obstacles = [];
+    this.hud.hideContinue();
+    this.hud.hideSummary();
+    this.hud.showModePicker();
+    this.scoreText.setText("0");
   }
 
   /** Hard snap (boot / continue / resize). Dunks use seamless transition. */
-  private place(fromScore: number, advanceSide = true): void {
-    if (fromScore === 0) this.side = 1;
+  private place(fromDunks: number, advanceSide = true): void {
+    if (fromDunks === 0) this.side = 1;
     else if (advanceSide) this.side *= -1;
 
-    const L = layoutForSide(this.side, fromScore, this.W, this.H);
+    const L = layoutForSide(this.side, fromDunks, this.W, this.H, this.seed);
     this.source = makeHoop(L.sx, L.sy, L.sourceAng);
     this.target = makeHoop(L.tx, L.ty, L.targetAng);
-    this.obstacles = buildObstacles(L.sx, L.sy, L.tx, L.ty, fromScore, this.W);
+    this.starPos = { ...L.star };
+    this.starTaken = false;
+    this.obstacles = buildObstacles(
+      L.sx,
+      L.sy,
+      L.tx,
+      L.ty,
+      fromDunks,
+      this.W,
+      this.seed,
+    );
     this.ball.x = L.sx;
     this.ball.y = L.sy - 1;
     this.ball.vx = 0;
@@ -148,22 +225,46 @@ export class PlayScene extends Phaser.Scene {
     this.scoredAt = 0;
     this.transition = null;
     this.aimOrigin = { x: L.sx, y: L.sy - 1 };
-    this.continueText.setVisible(false);
+    this.hud.hideContinue();
   }
 
-  private resetRun(): void {
-    this.score = 0;
-    this.side = 1;
-    this.showHint = true;
-    this.scoreText.setText("0");
-    this.place(0);
+  private applyContinueStub(): void {
+    if (this.mode !== "continue") return;
+    if (this.gameMode === "tournament") return;
+    this.continuesUsed += 1;
+    this.hud.hideContinue();
+    this.place(this.dunks, false);
+  }
+
+  private endRun(): void {
+    const summary = buildRunSummary({
+      mode: this.gameMode,
+      chainLength: this.dunks,
+      score: this.score,
+      continuesUsed: this.continuesUsed,
+      powerupsUsed: [],
+      seed: this.seed,
+    });
+    let board =
+      summary.mode === "casual" || summary.mode === "daily"
+        ? recordLocalScore({
+            score: summary.score,
+            stars: this.stars,
+            chainLength: summary.chainLength,
+            mode: summary.mode,
+            seed: summary.seed,
+            at: new Date().toISOString(),
+          })
+        : [];
+    if (summary.mode === "casual" || summary.mode === "daily") {
+      board = getLocalLeaderboard(summary.mode);
+    }
+    this.mode = "summary";
+    this.hud.hideContinue();
+    this.hud.showSummary(summary, board);
   }
 
   private onDown(pointer: Phaser.Input.Pointer): void {
-    if (this.mode === "continue") {
-      this.resetRun();
-      return;
-    }
     if (this.mode !== "aim" || !this.source) return;
     const p = { x: pointer.worldX, y: pointer.worldY };
     if (hypot(p.x - this.source.x, p.y - this.source.y) > 160) return;
@@ -188,7 +289,7 @@ export class PlayScene extends Phaser.Scene {
 
     if (hypot(this.aim.x, this.aim.y) < MIN_SHOT) {
       this.aim = { x: 0, y: 0, pull: 0 };
-      if (this.score === 0) this.showHint = true;
+      if (this.dunks === 0) this.showHint = true;
       return;
     }
 
@@ -203,6 +304,11 @@ export class PlayScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     const dt = Math.min(delta / 1000, 0.033);
+
+    if (this.mode === "menu" || this.mode === "summary") {
+      this.gfx.clear();
+      return;
+    }
 
     if (this.mode === "transition" && this.transition) {
       const done = updateDunkTransition(this.transition, this.ball, dt);
@@ -234,6 +340,7 @@ export class PlayScene extends Phaser.Scene {
       if (this.source) rimHit(this.source, this.ball);
       if (this.target) rimHit(this.target, this.ball);
       collideObstacles(this.obstacles, this.ball, dt);
+      this.tryCollectStar();
 
       if (this.target && throughHoop(this.target, this.ball)) {
         this.onScore(_time);
@@ -249,10 +356,22 @@ export class PlayScene extends Phaser.Scene {
     this.drawFrame();
   }
 
+  private tryCollectStar(): void {
+    if (this.starTaken || !this.starPos) return;
+    if (hypot(this.ball.x - this.starPos.x, this.ball.y - this.starPos.y) < 28) {
+      this.starTaken = true;
+      this.stars += 1;
+      this.score += STAR_POINTS;
+      this.hud.setStars(this.stars);
+      this.scoreText.setText(String(this.score));
+    }
+  }
+
   private onScore(time: number): void {
     if (this.scoredAt || !this.target || this.mode === "transition") return;
     this.scoredAt = time;
-    this.score += 1;
+    this.dunks += 1;
+    this.score += dunkScore(this.dunks);
     this.target.wobble = 1.5;
     this.ball.x = this.target.x;
     this.ball.y = this.target.y - 1;
@@ -260,30 +379,57 @@ export class PlayScene extends Phaser.Scene {
     this.ball.vy = 0;
     this.mode = "scored";
     this.scoreText.setText(String(this.score));
+    this.popupCombo(this.dunks);
+    this.cameras.main.shake(160, shakeIntensity(this.dunks));
+  }
+
+  private popupCombo(chain: number): void {
+    const label = comboLabel(chain);
+    if (!label) {
+      this.comboText.setAlpha(0);
+      return;
+    }
+    this.comboText.setText(label);
+    this.comboText.setAlpha(1);
+    this.comboText.setScale(label === "ON FIRE" ? 1.15 : 1);
+    this.tweens.add({
+      targets: this.comboText,
+      alpha: 0,
+      scale: 1.35,
+      duration: 700,
+      ease: "Cubic.easeOut",
+    });
   }
 
   private onMiss(): void {
     this.mode = "continue";
     this.dragging = false;
     this.dragPt = null;
-    this.continueText.setVisible(true);
+    this.hud.showContinue({
+      mode: this.gameMode,
+      score: this.score,
+      stars: this.stars,
+      chainLength: this.dunks,
+    });
   }
 
   private startTransition(): void {
     if (!this.source || !this.target || this.mode === "transition") return;
     const { side, transition } = beginDunkTransition({
       side: this.side,
-      score: this.score,
+      score: this.dunks,
       width: this.W,
       height: this.H,
       source: this.source,
       target: this.target,
       obstacles: this.obstacles,
+      seed: this.seed,
     });
     this.side = side;
     this.transition = transition;
     this.source = null;
     this.target = null;
+    this.starPos = null;
     this.obstacles = [];
     this.mode = "transition";
     this.dragging = false;
@@ -298,6 +444,9 @@ export class PlayScene extends Phaser.Scene {
     this.obstacles = next.obstacles;
     this.ball = next.ball;
     this.aimOrigin = next.aimOrigin;
+    const L = layoutForSide(this.side, this.dunks, this.W, this.H, this.seed);
+    this.starPos = { ...L.star };
+    this.starTaken = false;
     this.transition = null;
     this.mode = "aim";
     this.aim = { x: 0, y: 0, pull: 0 };
@@ -334,6 +483,10 @@ export class PlayScene extends Phaser.Scene {
       }
     }
 
+    if (this.starPos && !this.starTaken && this.mode !== "transition") {
+      this.drawStar(g, this.starPos.x, this.starPos.y);
+    }
+
     if (this.mode === "aim" && this.dragging) {
       this.drawAimDots(g);
     }
@@ -349,6 +502,14 @@ export class PlayScene extends Phaser.Scene {
         this.source.y + 62 + Math.sin(this.time.now / 220) * 6,
       );
     }
+  }
+
+  private drawStar(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+    const pulse = 1 + Math.sin(this.time.now / 160) * 0.08;
+    g.fillStyle(STAR_GOLD, 1);
+    g.fillCircle(x, y, 9 * pulse);
+    g.fillStyle(0xffffff, 0.55);
+    g.fillCircle(x - 2, y - 2, 3);
   }
 
   private drawTransition(g: Phaser.GameObjects.Graphics, tr: DunkTransition): void {

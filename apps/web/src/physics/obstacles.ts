@@ -22,28 +22,37 @@ export type BumperObstacle = {
 export type Obstacle = WallObstacle | BumperObstacle;
 
 /**
- * Exactly one obstacle per shot after the clean tutorial (score ≥ 1).
- * Placement is deterministic (skill path, no RNG brick walls).
+ * Exactly one obstacle per shot after the clean tutorial (dunks ≥ 1).
+ * Placement is deterministic from score + optional seed (daily climb).
  */
 export function buildObstacles(
   sx: number,
   sy: number,
   tx: number,
   ty: number,
-  score: number,
+  dunks: number,
   worldWidth: number,
+  seed = "casual",
 ): Obstacle[] {
-  if (score < 1) return [];
+  if (dunks < 1) return [];
 
   const midX = (sx + tx) / 2;
   const midY = (sy + ty) / 2;
+  let h = 2166136261;
+  const key = `${seed}|obs:${dunks}`;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const unit = (h >>> 0) % 10_000 / 10_000;
+  const drift = (unit - 0.5) * worldWidth * 0.04;
 
-  // Odd scores → wall peg (bank); even → bumper disc
-  if (score % 2 === 1) {
+  // Odd dunks → wall peg (bank); even → bumper disc
+  if (dunks % 2 === 1) {
     return [
       {
         type: "wall",
-        x: midX + (sx < tx ? -worldWidth * 0.06 : worldWidth * 0.06),
+        x: midX + (sx < tx ? -worldWidth * 0.06 : worldWidth * 0.06) + drift,
         y: midY,
         h: 90,
         w: 7,
@@ -54,7 +63,7 @@ export function buildObstacles(
   return [
     {
       type: "bumper",
-      x: midX,
+      x: midX + drift,
       y: midY,
       r: 22,
       pulse: 0,

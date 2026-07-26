@@ -1,0 +1,121 @@
+#meta-hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  font-family: Nunito, system-ui, sans-serif;
+  color: #1a1c22;
+}
+
+#meta-hud .meta-chip-row {
+  pointer-events: none;
+  display: flex;
+  justify-content: space-between;
+  padding: max(0.55rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
+    0 max(0.75rem, env(safe-area-inset-left));
+}
+
+#meta-hud .meta-chip {
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  color: #5f646e;
+}
+
+#meta-hud .meta-stars {
+  color: #ff5a1f;
+}
+
+#meta-hud .meta-panel {
+  pointer-events: auto;
+  position: absolute;
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(22rem, calc(100% - 1.5rem));
+  background: rgba(244, 245, 247, 0.96);
+  border: 2px solid #1a1c22;
+  border-radius: 16px;
+  padding: 1rem 1rem 1.1rem;
+  box-shadow: 0 10px 0 rgba(26, 28, 34, 0.12);
+  text-align: center;
+}
+
+#meta-hud .meta-panel[hidden] {
+  display: none !important;
+}
+
+#meta-hud .meta-panel h2 {
+  font-size: 1.45rem;
+  font-weight: 900;
+  margin: 0 0 0.35rem;
+}
+
+#meta-hud .meta-panel h3 {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.85rem;
+  color: #5f646e;
+}
+
+#meta-hud .meta-panel p {
+  margin: 0 0 0.75rem;
+  color: #5f646e;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+#meta-hud .meta-hint {
+  font-size: 0.72rem !important;
+  margin: 0.35rem 0 0.65rem !important;
+}
+
+#meta-hud .meta-panel button {
+  display: block;
+  width: 100%;
+  margin-top: 0.45rem;
+  border: none;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font: inherit;
+  font-weight: 800;
+  font-size: 1rem;
+  background: #2b6cff;
+  color: #fff;
+  box-shadow: 0 3px 0 #1a1c22;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#meta-hud .meta-panel button.ghost {
+  background: transparent;
+  color: #1a1c22;
+  border: 2px solid #1a1c22;
+  box-shadow: none;
+}
+
+#meta-hud .meta-panel button[hidden] {
+  display: none !important;
+}
+
+#meta-hud pre {
+  text-align: left;
+  background: #12141a;
+  color: #c5cad8;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  font-size: 0.72rem;
+  overflow: auto;
+  margin: 0;
+}
+
+#meta-hud ol {
+  text-align: left;
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #5f646e;
+}

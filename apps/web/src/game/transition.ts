@@ -54,9 +54,11 @@ export function beginDunkTransition(args: {
   source: Hoop;
   target: Hoop;
   obstacles: Obstacle[];
+  seed?: string;
 }): { side: number; transition: DunkTransition; layout: ShotLayout } {
+  const seed = args.seed ?? "casual";
   const side = args.side * -1;
-  const L = layoutForSide(side, args.score, args.width, args.height);
+  const L = layoutForSide(side, args.score, args.width, args.height, seed);
   const carrier = args.target;
   const leaving = args.source;
 
@@ -69,7 +71,15 @@ export function beginDunkTransition(args: {
     leaveTo: { x: leaving.x, y: args.height + 90, ang: leaving.ang },
     arriveFrom: { x: L.tx, y: L.ty - 140, ang: L.targetAng },
     arriveTo: { x: L.tx, y: L.ty, ang: L.targetAng },
-    nextObstacles: buildObstacles(L.sx, L.sy, L.tx, L.ty, args.score, args.width),
+    nextObstacles: buildObstacles(
+      L.sx,
+      L.sy,
+      L.tx,
+      L.ty,
+      args.score,
+      args.width,
+      seed,
+    ),
     oldObstacles: args.obstacles.map((o) => ({ ...o })),
     carry: null,
     leave: null,
