@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { applySlowDrop, applyWideHoop } from "./powerups.js";
+import { applySlowDrop, applyWideHoop, assertPowerupAllowed } from "./powerups.js";
 
 const BASE_LAYOUT = { rimRx: 20, rimRy: 13 };
 const BASE_DROP = { gravity: 980, maxPull: 200 };
@@ -31,6 +31,10 @@ describe("powerup modifiers", () => {
     assert.deepEqual(
       applySlowDrop(BASE_DROP, mods, "tournament"),
       BASE_DROP,
+    );
+    assert.throws(
+      () => assertPowerupAllowed("tournament", "wide_hoop"),
+      /forbidden/,
     );
   });
 });

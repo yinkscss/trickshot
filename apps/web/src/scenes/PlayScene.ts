@@ -4,7 +4,7 @@ import {
   allowsContinue,
   createInputLogRecorder,
   createScoreState,
-  dailySeedFromUtcDate,
+  resolveRunSeed,
   generateShotLayout,
   reduceScoreEvent,
   shotRng,
@@ -149,14 +149,18 @@ export class PlayScene extends Phaser.Scene {
     this.continueText.setPosition(this.W / 2, this.H * 0.55);
   }
 
+  /** Mode-matrix seed resolution (`per_run` / `utc_daily` / `tournament_id`). */
+  private currentSeed(): string {
+    return resolveRunSeed(this.runFsm.state.mode, { runSeed: this.runSeed });
+  }
+
   /** Hard snap (boot / continue / resize). Dunks use seamless transition. */
   private place(fromScore: number, advanceSide = true): void {
     if (fromScore === 0) this.side = 1;
     else if (advanceSide) this.side *= -1;
 
     const mode = this.runFsm.state.mode;
-    const seed =
-      mode === "daily" ? dailySeedFromUtcDate() : this.runSeed;
+    const seed = this.currentSeed();
     const L = generateShotLayout({
       side: this.side as -1 | 1,
       score: fromScore,
@@ -184,8 +188,7 @@ export class PlayScene extends Phaser.Scene {
   /** Seeded star spawn + position for the current shot (logic-owned rules). */
   private applyShotStar(fromScore: number): void {
     const mode = this.runFsm.state.mode;
-    const seed =
-      mode === "daily" ? dailySeedFromUtcDate() : this.runSeed;
+    const seed = this.currentSeed();
     const side = this.side as Side;
     const rng = shotRng(seed, fromScore, side, mode);
     this.scoreState = reduceScoreEvent(this.scoreState, {
@@ -432,10 +435,7 @@ export class PlayScene extends Phaser.Scene {
     const { side, transition } = beginDunkTransition({
       side: this.side,
       score: this.score,
-      seed:
-        this.runFsm.state.mode === "daily"
-          ? dailySeedFromUtcDate()
-          : this.runSeed,
+      seed: this.currentSeed(),
       mode: this.runFsm.state.mode,
       width: this.W,
       height: this.H,

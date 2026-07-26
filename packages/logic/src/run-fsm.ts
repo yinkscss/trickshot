@@ -1,7 +1,4 @@
-import {
-  TOURNAMENT_ALLOWS_CONTINUES,
-  type GameMode,
-} from "@trickshot/shared";
+import { getModeRules, type GameMode } from "@trickshot/shared";
 
 /** Alpha run lifecycle states (authoritative; scene must not invent parallel modes). */
 export type RunState =
@@ -96,8 +93,7 @@ export function createRunFSM(mode: GameMode = "casual"): RunFSMState {
 }
 
 export function allowsContinue(mode: GameMode): boolean {
-  if (mode === "tournament") return TOURNAMENT_ALLOWS_CONTINUES;
-  return true;
+  return getModeRules(mode).allowsContinues;
 }
 
 function hypot(x: number, y: number): number {
