@@ -1,31 +1,18 @@
-import Phaser from "phaser";
-import { BootScene } from "./scenes/BootScene";
-import { PlayScene } from "./scenes/PlayScene";
+import { PlayLoop } from "./game/PlayLoop";
 
-const parent = document.getElementById("game");
+const canvas = document.getElementById("game");
+if (!(canvas instanceof HTMLCanvasElement)) {
+  throw new Error("Trick Shot: #game canvas missing");
+}
 
-const game = new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: parent ?? undefined,
-  backgroundColor: "#cfd1d6",
-  scale: {
-    mode: Phaser.Scale.RESIZE,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    autoRound: true,
-  },
-  scene: [BootScene, PlayScene],
-  banner: false,
-  input: {
-    activePointers: 1,
-  },
-  render: {
-    antialias: true,
-    roundPixels: true,
-  },
-});
+const loop = new PlayLoop(canvas);
+loop.start();
+
+const host = document.getElementById("phone") ?? canvas.parentElement ?? canvas;
+const ro = new ResizeObserver(() => loop.resize());
+ro.observe(host);
+window.addEventListener("orientationchange", () => loop.resize());
 
 if (import.meta.env.DEV) {
-  (window as Window & { __trickshot?: Phaser.Game }).__trickshot = game;
+  (window as Window & { __trickshot?: PlayLoop }).__trickshot = loop;
 }
