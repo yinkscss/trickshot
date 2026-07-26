@@ -151,6 +151,7 @@
       <nav class="nav">
         <a href="../index.html">Home</a>
         <a href="prd.html">PRD</a>
+        <a href="STACK_LOCK.md">Stack Lock</a>
         <a href="roadmap.html">Roadmap</a>
         <a href="animation-pitch.html">Pitch</a>
       </nav>
@@ -159,6 +160,9 @@
       <p class="lead">
         Select one answer per question. The final agent prompt updates live —
         copy it when you’re ready to build.
+        Canonical freeze after answering:
+        <a href="STACK_LOCK.md"><strong>docs/STACK_LOCK.md</strong></a>
+        (if PRD ≠ lock, the lock wins).
       </p>
       <div class="progress-meta">
         <span id="progressLabel">0 / 0 answered</span>
@@ -185,7 +189,7 @@
   </div>
 <script>
 (() => {
-  const STORAGE_KEY = "trickshot-stack-answers-v2";
+  const STORAGE_KEY = "trickshot-stack-answers-v3";
 
   const QUESTIONS = [
     {
@@ -306,21 +310,21 @@
       id: "anticheat",
       title: "Score authority",
       hint: "Critical once tournaments pay real money.",
-      prd: "server_auth",
+      prd: "hybrid",
       options: [
-        { id: "server_auth", label: "Server-authoritative validation", note: "PRD default for paid modes" },
-        { id: "hybrid", label: "Client play + server replay checks", note: "Good middle ground" },
+        { id: "hybrid", label: "Client play + server replay checks", note: "Locked — STACK_LOCK default" },
+        { id: "server_auth", label: "Server-authoritative validation", note: "Heavier; reconsider only with lock review" },
         { id: "client_alpha", label: "Client-trusted in Alpha only", note: "Replace before Beta money" },
       ],
     },
     {
       id: "legal",
       title: "Tournament legal posture",
-      hint: "Open PRD question — pick a working assumption.",
-      prd: "continue_penalty",
+      hint: "Locked working assumption for paid tournaments.",
+      prd: "no_continue_tourney",
       options: [
-        { id: "continue_penalty", label: "Continues allowed with score penalty", note: "PRD working design" },
-        { id: "no_continue_tourney", label: "No continues in paid tournaments", note: "Cleaner skill-game story" },
+        { id: "no_continue_tourney", label: "No continues in paid tournaments", note: "Locked — STACK_LOCK / PRD aligned" },
+        { id: "continue_penalty", label: "Continues allowed with score penalty", note: "Superseded — needs new lock review" },
         { id: "legal_block", label: "Block tournaments until counsel signs off", note: "Safest — ship F2P first" },
       ],
     },
@@ -387,15 +391,16 @@
     lines.push("- Combo juice on chain (x2 / x3 / ON FIRE).");
     lines.push("");
     lines.push("## Repo context");
+    lines.push("- Stack lock (canonical): docs/STACK_LOCK.md — if PRD ≠ lock, lock wins");
     lines.push("- PRD: docs/prd.html and docs/PRD_TrickShot_Celo.md");
     lines.push("- Roadmap: docs/roadmap.html");
     lines.push("- Playable pitch: docs/animation-pitch.html");
     lines.push("- Stack pack: docs/stack-questions.html");
     lines.push("- GitHub: https://github.com/yinkscss/trickshot");
     lines.push("");
-    lines.push("## Monetization / chain constraints (from PRD)");
+    lines.push("## Monetization / chain constraints (from PRD + STACK_LOCK)");
     lines.push("- Powerups, pay-to-continue, season pass; tournaments with **15% house rake** (transparent on-chain).");
-    lines.push("- Powerups banned in tournament mode; no loot-box RNG.");
+    lines.push("- Powerups banned in tournament mode; **no continues in paid tournaments**; no loot-box RNG.");
     lines.push("- Prefer stablecoin micro-tx (cUSD/USDC) with sub-cent fees.");
     lines.push("");
     if (missing.length) {

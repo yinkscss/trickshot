@@ -417,25 +417,28 @@
       <a href="#tech">Tech</a>
       <a href="#rollout">Rollout</a>
       <a href="#questions">Open Qs</a>
+      <a href="STACK_LOCK.md">Stack Lock</a>
       <a href="animation-pitch.html">Animation Pitch →</a>
     </nav>
 
     <header class="hero">
-      <p class="eyebrow">Product Requirements · Draft v1.0 · July 26, 2026</p>
+      <p class="eyebrow">Product Requirements · Draft v1.0 (stack-aligned) · July 26, 2026</p>
       <h1>TRICK <span class="accent">SHOT</span></h1>
       <p class="tagline">
         A precision chain-hoop arcade game on Celo — drag, release, chain the dunks.
         Monetized through powerups, pay-to-continue, season pass, and 15% tournament rake.
+        Client: Phaser 3 PWA.
       </p>
       <div class="meta">
         <span class="chip hot">Celo L2</span>
-        <span class="chip">Mobile-first</span>
+        <span class="chip">Phaser 3 PWA</span>
         <span class="chip">cUSD / USDC</span>
         <span class="chip">MiniPay ready</span>
-        <span class="chip">Status: Draft</span>
+        <span class="chip">Stack locked</span>
       </div>
       <div class="links">
-        <a class="btn btn-primary" href="animation-pitch.html">Watch gameplay pitch</a>
+        <a class="btn btn-primary" href="STACK_LOCK.md">Stack lock (canonical)</a>
+        <a class="btn btn-ghost" href="animation-pitch.html">Watch gameplay pitch</a>
         <a class="btn btn-ghost" href="PRD_TrickShot_Celo.md">Raw Markdown PRD</a>
       </div>
       <svg class="hoop-deco" viewBox="0 0 100 100" aria-hidden="true">
@@ -448,15 +451,23 @@
 
     <section id="summary">
       <h2><span class="num">01</span> Executive Summary</h2>
+      <div class="callout warn">
+        <strong>Stack authority:</strong> Engineering is frozen in
+        <a href="STACK_LOCK.md"><strong>docs/STACK_LOCK.md</strong></a>.
+        If this PRD disagrees with STACK_LOCK, <strong>STACK_LOCK wins</strong>.
+        Do not silently change stack IDs without a new lock review.
+      </div>
       <p>
         <strong>Trick Shot</strong> is a mobile-first, single-input arcade game — a precision
         “swing the ball through a chain of hoops” loop in the spirit of Ketchapp-style drop/swing games —
         built on <strong>Celo</strong>, an Ethereum L2 optimized for low-cost, mobile-friendly stablecoin payments.
+        The game client is a <strong>Phaser 3 PWA</strong> (browser / MiniPay first).
       </p>
       <div class="callout">
         Unlike cosmetic-and-boast models, Trick Shot’s monetization is built around three levers:
         <strong>powerup purchases</strong>, <strong>pay-to-continue</strong>, and a <strong>season pass</strong> —
         layered on skill-based tournaments where the house takes a <strong>15% rake of the prize pool</strong>.
+        Paid tournaments are <strong>continue-free</strong> and <strong>powerup-free</strong>.
       </div>
       <p>
         Celo remains the settlement layer: sub-cent fees, gas payable in cUSD/USDC/USDT, ~1s blocks,
@@ -492,7 +503,7 @@
       <ol>
         <li>F2P core loop with paid powerups, continues, and seasonal subscription — positive unit economics within 2 quarters.</li>
         <li>Skill-based tournaments with <strong>15% house rake</strong> as recurring revenue.</li>
-        <li>Day-30 retention ≥ 20% and paying-user rate ≥ 6%, with continues as the primary conversion moment.</li>
+        <li>Day-30 retention ≥ 20% and paying-user rate ≥ 6%, with continues as the primary conversion moment in <strong>casual / daily</strong> modes.</li>
       </ol>
 
       <h3>Non-Goals (v1)</h3>
@@ -500,6 +511,8 @@
         <li>No peer-to-peer wagering pools — fixed entry fee, pooled prize, house rake only.</li>
         <li>No speculative token or yield product at launch.</li>
         <li>No randomized paid loot boxes — fixed-price, fixed-effect purchases only.</li>
+        <li>No continues in <strong>paid tournament</strong> mode (<code>legal=no_continue_tourney</code>).</li>
+        <li>No silent stack swaps (Unity client, Matter/Arcade as physics authority, non-Celo settlement) — see <a href="STACK_LOCK.md">STACK_LOCK</a>.</li>
       </ul>
 
       <h3>KPIs (Month 6)</h3>
@@ -535,7 +548,7 @@
       </div>
       <div class="card persona" style="margin-top:1rem">
         <h3>Competitive Chain-Runner</h3>
-        <p>Plays for leaderboards and tournament pools. Buys powerups deliberately to push personal-best chains.</p>
+        <p>Plays for leaderboards and tournament pools. Buys powerups in casual/practice to push PBs — powerups and continues are unavailable in paid tournaments.</p>
       </div>
     </section>
 
@@ -558,8 +571,8 @@
       <h3>5.1 Core Loop (v1)</h3>
       <ul>
         <li><strong>Single-input swing:</strong> drag back to aim, release to launch from the current hoop into the next.</li>
-        <li><strong>Chain scoring:</strong> consecutive clean swings build a multiplier; a miss ends the run unless continue/shield.</li>
-        <li><strong>Obstacles:</strong> spinner bars, moving hoops, narrow-gap hoops that raise the skill ceiling.</li>
+        <li><strong>Chain scoring:</strong> consecutive clean swings build a multiplier; a miss ends the run unless continue/shield (<strong>casual / daily only</strong>).</li>
+        <li><strong>Obstacles:</strong> exactly one per shot in pitch-parity Alpha; roster expands later (spinners, moving/narrow hoops).</li>
         <li><strong>Stars:</strong> pickups along the chain feed soft currency (cosmetics &amp; minor powerups without cUSD).</li>
         <li>Daily challenges, streaks, local/global leaderboards.</li>
       </ul>
@@ -568,7 +581,7 @@
       <ul>
         <li><strong>Invisible wallet</strong> via Magic.link — email/social/phone, non-custodial behind the scenes.</li>
         <li><strong>On-chain run attestation:</strong> verified best chain minted as optional shareable proof.</li>
-        <li><strong>Tournaments:</strong> cUSD entry, contract-escrowed prize pool, automated payouts; house takes <strong>15% rake</strong>, verifiable on-chain before entry.</li>
+        <li><strong>Tournaments:</strong> cUSD entry, contract-escrowed prize pool, automated payouts; house takes <strong>15% rake</strong>, verifiable on-chain before entry. Runs are <strong>powerup-free</strong> and <strong>continue-free</strong>.</li>
       </ul>
 
       <div class="callout blue">
@@ -585,7 +598,7 @@
         </thead>
         <tbody>
           <tr><td>Powerups</td><td>Aim assist, slow-drop, wide-hoop, magnet-star</td><td>$0.29–$1.99</td></tr>
-          <tr><td>Continue</td><td>Resume after miss (paid) or watch-to-continue (ad)</td><td>$0.49–$1.49</td></tr>
+          <tr><td>Continue</td><td>Resume after miss (paid/ad) — casual/daily only; banned in paid tournaments</td><td>$0.49–$1.49</td></tr>
           <tr><td>Season Pass</td><td>Cosmetics, soft currency, exclusive skins</td><td>$4.99 / season</td></tr>
           <tr><td>Tournament entry</td><td>Timed leaderboard; <strong>15% house rake</strong></td><td>$1–$20</td></tr>
           <tr><td>Cosmetic shop</td><td>Ball/hoop/trail skins (ERC-1155)</td><td>$0.99–$5.99</td></tr>
@@ -603,36 +616,56 @@
       </ul>
 
       <div class="callout warn">
-        <strong>Guardrails:</strong> Powerups banned in Tournament mode. Continues allowed but score-penalized.
+        <strong>Guardrails:</strong> Powerups banned in Tournament mode.
+        Continues <strong>disabled</strong> in paid tournaments (<code>legal=no_continue_tourney</code>) —
+        continues remain the primary conversion in casual/daily.
         Daily spend caps + self-exclusion. No RNG purchases. Legal review per jurisdiction required before real-money tournaments —
         this PRD is not legal advice.
       </div>
     </section>
 
     <section id="tech">
-      <h2><span class="num">07</span> Tech Stack</h2>
+      <h2><span class="num">07</span> Tech Stack (locked)</h2>
+      <p>
+        Canonical freeze: <a href="STACK_LOCK.md"><strong>docs/STACK_LOCK.md</strong></a>.
+        If this table drifts, STACK_LOCK wins.
+      </p>
       <table>
         <thead>
-          <tr><th>Layer</th><th>Choice</th></tr>
+          <tr><th>Layer</th><th>Choice</th><th>Lock ID</th></tr>
         </thead>
         <tbody>
-          <tr><td>Blockchain</td><td>Celo (Ethereum L2)</td></tr>
-          <tr><td>Wallet / Auth</td><td>Magic.link (embedded wallets)</td></tr>
-          <tr><td>Indexing</td><td>Goldsky (Subgraphs + Mirror)</td></tr>
-          <tr><td>Contracts</td><td>Solidity, Foundry, OpenZeppelin</td></tr>
-          <tr><td>Tournament escrow</td><td>Purpose-built: 85% / 15% split on settlement</td></tr>
-          <tr><td>Game client</td><td>Web-based (Phaser 3 PWA / browser-first)</td></tr>
-          <tr><td>Backend</td><td>Node.js / TypeScript, Postgres, Redis</td></tr>
-          <tr><td>Hosting</td><td>AWS/GCP + Cloudflare</td></tr>
+          <tr><td>Blockchain</td><td>Celo (Ethereum L2); Alpha = Sepolia <code>11142220</code></td><td><code>chain=celo</code></td></tr>
+          <tr><td>Wallet / Auth</td><td>Magic.link (embedded wallets)</td><td><code>wallet=magic</code></td></tr>
+          <tr><td>Indexing</td><td>Goldsky (Subgraphs + Mirror) — Beta+</td><td><code>indexing=goldsky</code></td></tr>
+          <tr><td>Contracts</td><td>Solidity, Foundry, OpenZeppelin</td><td><code>contracts=foundry</code></td></tr>
+          <tr><td>Tournament escrow</td><td>Purpose-built: 85% / 15% split on settlement</td><td>(contracts)</td></tr>
+          <tr><td>Game client</td><td>Phaser 3 PWA / browser-first</td><td><code>client=phaser_pwa</code></td></tr>
+          <tr><td>Physics / aim</td><td>Custom 2D integrator (pitch parity)</td><td><code>physics=custom_2d</code></td></tr>
+          <tr><td>Backend</td><td>Node.js / TypeScript, Postgres, Redis</td><td><code>backend=node_pg_redis</code></td></tr>
+          <tr><td>Hosting</td><td>AWS/GCP + Cloudflare</td><td><code>hosting=aws_cf</code></td></tr>
+          <tr><td>Platforms</td><td>PWA / MiniPay web first</td><td><code>platforms=pwa_first</code></td></tr>
+          <tr><td>Monetization (v1)</td><td>Continues + powerups first</td><td><code>monetization=continue_powerup</code></td></tr>
+          <tr><td>Score authority</td><td>Client play + server replay checks</td><td><code>anticheat=hybrid</code></td></tr>
+          <tr><td>Tournament legal</td><td>No continues in paid tournaments</td><td><code>legal=no_continue_tourney</code></td></tr>
         </tbody>
       </table>
+
+      <h3>Out-of-scope stack swaps</h3>
+      <ul>
+        <li>Unity (or other native) as the primary client</li>
+        <li>Phaser Matter / Arcade as gameplay physics authority</li>
+        <li>Non-Celo L1/L2 settlement for Alpha money paths</li>
+        <li>WalletConnect-primary onboarding replacing Magic for v1</li>
+        <li>Loot-box / RNG paid rewards; re-enabling tournament continues without a new lock</li>
+      </ul>
 
       <h3>Security &amp; Compliance</h3>
       <ul>
         <li>Mandatory audit before mainnet — especially tournament escrow holding pooled funds.</li>
         <li>KYC/AML for payouts above thresholds; pluggable compliance provider.</li>
-        <li>Server-authoritative score validation (anti-cheat for paid tournaments).</li>
-        <li>Responsible spending: caps/cooldowns on continues and tournament entries.</li>
+        <li>Hybrid anti-cheat: client play + server replay checks (<code>anticheat=hybrid</code>).</li>
+        <li>Responsible spending: caps/cooldowns on continues (casual/daily) and tournament entries.</li>
       </ul>
     </section>
 
@@ -651,7 +684,7 @@
         </div>
         <div class="phase">
           <div class="label">Launch</div>
-          <div>Tournaments live with escrow/payout; MiniPay co-marketing</div>
+          <div>Tournaments live with escrow/payout (no continues / no powerups); MiniPay co-marketing</div>
           <div class="when">Week 16</div>
         </div>
         <div class="phase">
@@ -666,15 +699,16 @@
       <h2><span class="num">09</span> Open Questions</h2>
       <ol>
         <li>What max tournament entry / prize pool pre-KYC, and at what threshold is KYC mandatory?</li>
-        <li>Does continue-penalty (fixed point deduction) preserve skill-based classification, or should continues be disabled in paid tournaments?</li>
+        <li><s>Continues in tournaments (penalty vs disabled)?</s> <strong>Resolved:</strong> disabled in paid tournaments — see <a href="STACK_LOCK.md">STACK_LOCK</a> (<code>legal=no_continue_tourney</code>).</li>
         <li>Which jurisdictions are in launch scope, and has legal confirmed the 15% rake / payout-curve model in each?</li>
-        <li>Flat continue price vs. scaling with chain length? Needs a data-backed pricing test before Beta.</li>
+        <li>Flat continue price vs. scaling with chain length (casual/daily)? Needs a data-backed pricing test before Beta.</li>
       </ol>
     </section>
 
     <footer>
       Document owner: Senior Product Manager · Trick Shot on Celo · July 2026<br />
-      Reconfirm Celo / Goldsky / Magic.link vendor details before engineering commitment.
+      Stack IDs frozen in <a href="STACK_LOCK.md">STACK_LOCK.md</a> — if PRD ≠ lock, the lock wins.<br />
+      Reconfirm Celo / Goldsky / Magic.link vendor details before production cutover.
     </footer>
   </div>
 </body>
