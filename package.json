@@ -14,7 +14,7 @@
     "build:web": "npm run build -w @trickshot/shared && npm run build -w @trickshot/web",
     "build:api": "npm run build -w @trickshot/shared && npm run build -w @trickshot/api",
     "typecheck": "npm run typecheck -w @trickshot/shared && npm run typecheck -w @trickshot/web && npm run typecheck -w @trickshot/api",
-    "test": "npm run test -w @trickshot/shared --if-present && npm run test -w @trickshot/api --if-present",
+    "test": "npm run test -w @trickshot/shared --if-present && npm run test -w @trickshot/web --if-present && npm run test -w @trickshot/api --if-present",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts"
   },
