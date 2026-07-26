@@ -10,7 +10,11 @@ export {
   OBSTACLE_RED,
   BALL_FILL,
 } from "./colors";
-export { PitchCanvasRenderer, safeTopInset } from "./PitchCanvasRenderer";
+export {
+  DirectCanvasRenderer,
+  clientToCourt,
+  safeTopInset,
+} from "./directCanvas";
 export {
   drawPitchFrame,
   drawMarble,

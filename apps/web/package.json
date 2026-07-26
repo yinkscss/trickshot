@@ -13,8 +13,7 @@
   "dependencies": {
     "@trickshot/logic": "*",
     "@trickshot/physics": "*",
-    "@trickshot/shared": "*",
-    "phaser": "^3.90.0"
+    "@trickshot/shared": "*"
   },
   "devDependencies": {
     "tsx": "^4.20.3",

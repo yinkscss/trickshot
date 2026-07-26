@@ -12,7 +12,7 @@ Do not change stack IDs without an explicit lock review (update `STACK_LOCK.md` 
 
 | ID | Choice |
 |---|---|
-| `client=phaser_pwa` | Phaser 3 PWA |
+| `client=canvas2d_pitch` | Canvas2D pitch (vanilla HTML + rAF) |
 | `physics=custom_2d` | Custom 2D integrator (pitch parity) |
 | `chain=celo` | Celo L2 (Alpha: Sepolia `11142220`) |
 | `wallet=magic` | Magic.link |
@@ -30,7 +30,7 @@ Do not change stack IDs without an explicit lock review (update `STACK_LOCK.md` 
 ## Out-of-scope stack swaps
 
 - Unity (or other native) as the primary client
-- Phaser Matter / Arcade as gameplay physics authority
+- Phaser (Game / Scenes / Arcade / Matter) as the Alpha game client or gameplay physics authority
 - Non-Celo settlement for Alpha money paths
 - Replacing Magic with WalletConnect-primary onboarding for v1
 - Replacing Supabase with a custom Node/Postgres/Redis API

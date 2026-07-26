@@ -4,13 +4,15 @@
 **Date:** July 26, 2026  
 **Source:** [stack-questions.html](./stack-questions.html) final prompt  
 
+**User override (July 27, 2026):** Game client locked to the playable pitch stack — vanilla HTML + `CanvasRenderingContext2D` + Nunito + `requestAnimationFrame`. Phaser 3 client abandoned for Alpha (`client=phaser_pwa` retired).
+
 Do not silently change these choices. Alpha+ engineering must follow this document.
 
 ## Locked decisions
 
 | Layer | Choice | ID |
 |---|---|---|
-| Game client | Phaser 3 PWA (web-first; optional Capacitor later) | `client=phaser_pwa` |
+| Game client | Canvas2D pitch (vanilla HTML + rAF; PWA wraps later; optional Capacitor later) | `client=canvas2d_pitch` |
 | Physics / aim | Custom 2D integrator (pitch parity: net + dots + banks) | `physics=custom_2d` |
 | Blockchain | Celo (Ethereum L2) | `chain=celo` |
 | Wallet / auth | Magic.link embedded wallets | `wallet=magic` |
@@ -36,7 +38,7 @@ Do not silently change these choices. Alpha+ engineering must follow this docume
 Require a new lock review — do not land in PRs:
 
 - Unity (or other native) as the primary client
-- Phaser Matter / Arcade Physics as gameplay authority
+- Phaser (Game / Scenes / Arcade / Matter) as the Alpha game client or as gameplay physics authority — Phaser client abandoned for Alpha in favor of `client=canvas2d_pitch`
 - Non-Celo L1/L2 settlement for Alpha money paths
 - WalletConnect-primary onboarding replacing Magic for v1
 - Replacing Supabase with a custom Node/Postgres/Redis API without a lock review
@@ -74,11 +76,13 @@ See [animation-pitch.html](./animation-pitch.html):
 ## Repo layout (scaffolded)
 
 ```
-apps/web          Phaser 3 + Vite PWA client
+apps/web          Canvas2D pitch client (Vite; PWA wrap later)
 supabase/         Supabase project (migrations, Edge Functions)
 apps/api          Deprecated Fastify stub (remove after Edge cutover)
 contracts/        Foundry + OpenZeppelin
 packages/shared   Shared types / constants
+packages/physics  Custom 2D integrator (TS authority)
+packages/logic    RunFSM / scoring / shot layout (TS authority)
 infra/            Hosting + Goldsky stubs
 docs/             PRD, roadmap, pitch, this lock
 ```

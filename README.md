@@ -8,8 +8,8 @@ Precision chain-hoop arcade game on **Celo** — drag, release, chain the dunks.
 
 ## Contributing (stack)
 
-- Honor lock IDs: `client=phaser_pwa`, `physics=custom_2d`, `chain=celo`, `wallet=magic`, `contracts=foundry`, `indexing=goldsky`, `backend=supabase`, `hosting=aws_cf`, `platforms=pwa_first`, `monetization=continue_powerup`, `anticheat=hybrid`, `legal=no_continue_tourney`.
-- **Out of scope without a lock review:** Unity primary client, Matter/Arcade as physics authority, non-Celo settlement, Magic replacement for v1, custom Node/Postgres/Redis instead of Supabase, loot-box RNG, re-enabling tournament continues.
+- Honor lock IDs: `client=canvas2d_pitch`, `physics=custom_2d`, `chain=celo`, `wallet=magic`, `contracts=foundry`, `indexing=goldsky`, `backend=supabase`, `hosting=aws_cf`, `platforms=pwa_first`, `monetization=continue_powerup`, `anticheat=hybrid`, `legal=no_continue_tourney`.
+- **Out of scope without a lock review:** Unity primary client, Phaser as Alpha client / Matter/Arcade as physics authority, non-Celo settlement, Magic replacement for v1, custom Node/Postgres/Redis instead of Supabase, loot-box RNG, re-enabling tournament continues.
 - Alpha testnet: **Celo Sepolia** `11142220`.
 - Prefer surgical PRs that match the [playable pitch](docs/animation-pitch.html) feel before adding features.
 
@@ -17,7 +17,7 @@ Precision chain-hoop arcade game on **Celo** — drag, release, chain the dunks.
 
 | Path | Role |
 |---|---|
-| `apps/web` | Phaser 3 PWA client |
+| `apps/web` | Canvas2D pitch client (Vite; PWA wrap later) |
 | `supabase/` | Supabase (Postgres migrations + Edge Functions) |
 | `apps/api` | Deprecated Fastify stub (migrate to Edge Functions) |
 | `contracts/` | Foundry + OpenZeppelin |
@@ -72,6 +72,6 @@ npx serve .
 ## Product snapshot
 
 - **Core loop:** drag-to-aim → release → swish through next hoop → collect stars → seamless handoff → chain multiplier
-- **Rails:** Celo L2, Magic.link wallets, Goldsky indexing, Phaser 3 PWA
+- **Rails:** Celo L2, Magic.link wallets, Goldsky indexing, Canvas2D pitch client
 - **Pitch must-haves:** zigzag climb, net drag, wall banks, one obstacle/shot, combo juice, seamless dunk→loop
 - **Status:** Stack locked · Alpha scaffold in progress (July 26, 2026)

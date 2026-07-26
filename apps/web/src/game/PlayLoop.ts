@@ -1,4 +1,3 @@
-import Phaser from "phaser";
 import {
   RunFSM,
   allowsContinue,
@@ -14,14 +13,14 @@ import {
   type Side,
 } from "@trickshot/logic";
 import { PHYSICS_BUILD_ID } from "@trickshot/physics";
-import { makeHoop } from "../game/layout";
+import { makeHoop } from "./layout";
 import {
   beginDunkTransition,
   finishDunkTransition,
   mixRimCss,
   updateDunkTransition,
   type DunkTransition,
-} from "../game/transition";
+} from "./transition";
 import {
   MIN_SHOT,
   aimFrom,
@@ -40,8 +39,8 @@ import {
   type Vec2,
 } from "../physics";
 import {
-  COURT,
-  PitchCanvasRenderer,
+  DirectCanvasRenderer,
+  clientToCourt,
   safeTopInset,
   spawnLaunchRings,
   updateTrailEffects,
@@ -53,11 +52,11 @@ import {
 
 /**
  * Pitch-parity core loop: zigzag climb, one obstacle per shot,
- * seamless dunk→next-loop handoff. Rendering is Canvas2D pitch draw
- * blitted into a Phaser CanvasTexture.
+ * seamless dunk→next-loop handoff. Canvas2D + rAF (no Phaser).
  */
-export class PlayScene extends Phaser.Scene {
-  private pitch!: PitchCanvasRenderer;
+export class PlayLoop {
+  private readonly pitch: DirectCanvasRenderer;
+  private readonly canvas: HTMLCanvasElement;
 
   private readonly trail: TrailParticle[] = [];
   private readonly rings: LaunchRing[] = [];
@@ -94,51 +93,98 @@ export class PlayScene extends Phaser.Scene {
 
   private W = 390;
   private H = 780;
+  private raf = 0;
+  private lastTs = 0;
+  private running = false;
 
-  constructor() {
-    super("play");
+  private readonly onPointerDown = (e: PointerEvent): void => {
+    e.preventDefault();
+    this.canvas.setPointerCapture(e.pointerId);
+    this.handleDown(e.clientX, e.clientY, e.timeStamp);
+  };
+  private readonly onPointerMove = (e: PointerEvent): void => {
+    if (!this.dragging) return;
+    e.preventDefault();
+    this.handleMove(e.clientX, e.clientY, e.timeStamp);
+  };
+  private readonly onPointerUp = (e: PointerEvent): void => {
+    e.preventDefault();
+    try {
+      this.canvas.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    this.handleUp(e.clientX, e.clientY, e.timeStamp);
+  };
+
+  constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+    this.pitch = new DirectCanvasRenderer(canvas);
   }
 
-  create(): void {
-    this.cameras.main.setBackgroundColor(COURT);
-    this.pitch = new PitchCanvasRenderer(this);
-
+  start(): void {
+    if (this.running) return;
+    this.running = true;
     this.syncSize();
     this.applyRunResult(this.runFsm.dispatch({ type: "bootComplete" }));
 
-    this.input.on("pointerdown", this.onDown, this);
-    this.input.on("pointermove", this.onMove, this);
-    this.input.on("pointerup", this.onUp, this);
-    this.input.on("pointerupoutside", this.onUp, this);
-
-    this.scale.on("resize", this.onResize, this);
+    this.canvas.addEventListener("pointerdown", this.onPointerDown);
+    this.canvas.addEventListener("pointermove", this.onPointerMove);
+    this.canvas.addEventListener("pointerup", this.onPointerUp);
+    this.canvas.addEventListener("pointercancel", this.onPointerUp);
+    this.canvas.addEventListener("lostpointercapture", this.onPointerUp);
 
     if (import.meta.env.DEV) {
       const w = window as Window & {
-        __trickshotScene?: PlayScene;
+        __trickshotLoop?: PlayLoop;
         __trickshotCapture?: () => string;
         __trickshotPose?: (kind: "idle" | "aim" | "flight" | "scored") => void;
       };
-      w.__trickshotScene = this;
+      w.__trickshotLoop = this;
       w.__trickshotCapture = () => this.pitch.toDataURL("image/png");
       w.__trickshotPose = (kind) => this.devPose(kind);
     }
+
+    this.lastTs = performance.now();
+    const tick = (ts: number): void => {
+      if (!this.running) return;
+      const delta = ts - this.lastTs;
+      this.lastTs = ts;
+      this.update(ts, delta);
+      this.raf = requestAnimationFrame(tick);
+    };
+    this.raf = requestAnimationFrame(tick);
   }
 
-  private onResize = (gameSize: Phaser.Structs.Size): void => {
-    this.cameras.resize(gameSize.width, gameSize.height);
+  stop(): void {
+    this.running = false;
+    cancelAnimationFrame(this.raf);
+    this.canvas.removeEventListener("pointerdown", this.onPointerDown);
+    this.canvas.removeEventListener("pointermove", this.onPointerMove);
+    this.canvas.removeEventListener("pointerup", this.onPointerUp);
+    this.canvas.removeEventListener("pointercancel", this.onPointerUp);
+    this.canvas.removeEventListener("lostpointercapture", this.onPointerUp);
+  }
+
+  resize(): void {
     const prevW = this.W;
     const prevH = this.H;
     this.syncSize();
     if (this.runFsm.runState === "aiming" && prevW > 0 && prevH > 0) {
       this.place(this.runFsm.state.score, false);
     }
-  };
+  }
 
   private syncSize(): void {
-    this.W = this.scale.width;
-    this.H = this.scale.height;
+    const host = this.canvas.parentElement ?? this.canvas;
+    const rect = host.getBoundingClientRect();
+    this.W = Math.max(1, Math.floor(rect.width));
+    this.H = Math.max(1, Math.floor(rect.height));
     this.pitch.resize(this.W, this.H);
+  }
+
+  private pointerCourt(clientX: number, clientY: number): Vec2 {
+    return clientToCourt(this.canvas, clientX, clientY, this.W, this.H);
   }
 
   /** Mode-matrix seed resolution (`per_run` / `utc_daily` / `tournament_id`). */
@@ -262,7 +308,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private dispatchMiss(): void {
-    this.inputLog.record({ type: "out_of_bounds" }, this.time.now);
+    this.inputLog.record({ type: "out_of_bounds" }, performance.now());
     this.scoreState = reduceScoreEvent(this.scoreState, { type: "miss" });
     this.dragging = false;
     this.dragPt = null;
@@ -277,7 +323,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private resetRun(): void {
-    this.inputLog.record({ type: "continue_accept" }, this.time.now);
+    this.inputLog.record({ type: "continue_accept" }, performance.now());
     this.showHint = true;
     this.continueLabel = "TAP TO RETRY";
     this.scoreState = reduceScoreEvent(this.scoreState, {
@@ -286,36 +332,35 @@ export class PlayScene extends Phaser.Scene {
     this.applyRunResult(this.runFsm.dispatch({ type: "acceptContinue" }));
   }
 
-  private onDown(pointer: Phaser.Input.Pointer): void {
+  private handleDown(clientX: number, clientY: number, time: number): void {
     if (this.runFsm.runState === "continue") {
       this.resetRun();
       return;
     }
     if (this.runFsm.runState !== "aiming" || !this.source) return;
-    const p = { x: pointer.worldX, y: pointer.worldY };
+    const p = this.pointerCourt(clientX, clientY);
     if (hypot(p.x - this.source.x, p.y - this.source.y) > 160) return;
     this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
     this.dragging = true;
     this.dragPt = p;
-    this.inputLog.record({ type: "pointer_down", x: p.x, y: p.y }, pointer.time);
+    this.inputLog.record({ type: "pointer_down", x: p.x, y: p.y }, time);
     this.aim = aimFrom(this.aimOrigin, p, this.W, this.H);
     this.showHint = false;
   }
 
-  private onMove(pointer: Phaser.Input.Pointer): void {
+  private handleMove(clientX: number, clientY: number, time: number): void {
     if (!this.dragging || this.runFsm.runState !== "aiming") return;
-    this.dragPt = { x: pointer.worldX, y: pointer.worldY };
-    this.inputLog.record(
-      { type: "pointer_move", x: pointer.worldX, y: pointer.worldY },
-      pointer.time,
-    );
-    this.aim = aimFrom(this.aimOrigin, this.dragPt, this.W, this.H);
+    const p = this.pointerCourt(clientX, clientY);
+    this.dragPt = p;
+    this.inputLog.record({ type: "pointer_move", x: p.x, y: p.y }, time);
+    this.aim = aimFrom(this.aimOrigin, p, this.W, this.H);
   }
 
-  private onUp(pointer: Phaser.Input.Pointer): void {
+  private handleUp(clientX: number, clientY: number, time: number): void {
     if (!this.dragging || this.runFsm.runState !== "aiming") return;
-    this.dragPt = { x: pointer.worldX, y: pointer.worldY };
-    this.aim = aimFrom(this.aimOrigin, this.dragPt, this.W, this.H);
+    const p = this.pointerCourt(clientX, clientY);
+    this.dragPt = p;
+    this.aim = aimFrom(this.aimOrigin, p, this.W, this.H);
     this.dragging = false;
 
     const result = this.runFsm.dispatch({
@@ -327,10 +372,7 @@ export class PlayScene extends Phaser.Scene {
       minSpeed: MIN_SHOT,
     });
     if (!result.accepted) {
-      this.inputLog.record(
-        { type: "pointer_up", x: pointer.worldX, y: pointer.worldY },
-        pointer.time,
-      );
+      this.inputLog.record({ type: "pointer_up", x: p.x, y: p.y }, time);
       this.aim = { x: 0, y: 0, pull: 0 };
       if (this.runFsm.state.score === 0) this.showHint = true;
       return;
@@ -343,19 +385,19 @@ export class PlayScene extends Phaser.Scene {
         vy: this.aim.y,
         originX: this.aimOrigin.x,
         originY: this.aimOrigin.y,
-        x: pointer.worldX,
-        y: pointer.worldY,
+        x: p.x,
+        y: p.y,
       },
-      pointer.time,
+      time,
     );
     this.applyRunResult(result);
     this.aim = { x: 0, y: 0, pull: 0 };
     this.dragPt = null;
   }
 
-  update(_time: number, delta: number): void {
+  private update(time: number, delta: number): void {
     if (this.poseOverride) {
-      this.drawFrame(_time);
+      this.drawFrame(time);
       return;
     }
 
@@ -380,7 +422,7 @@ export class PlayScene extends Phaser.Scene {
           this.runFsm.dispatch({ type: "finishTransition" }),
         );
       }
-      this.drawFrame(_time);
+      this.drawFrame(time);
       return;
     }
 
@@ -391,16 +433,16 @@ export class PlayScene extends Phaser.Scene {
       this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
       this.ball.x = this.aimOrigin.x;
       this.ball.y =
-        this.aimOrigin.y + (this.dragging ? 0 : Math.sin(_time / 260) * 1.2);
+        this.aimOrigin.y + (this.dragging ? 0 : Math.sin(time / 260) * 1.2);
     }
 
     if (this.runFsm.runState === "scored" && this.target) {
       this.ball.x = this.target.x;
-      this.ball.y = this.target.y - 1 + Math.sin(_time / 120) * 0.8;
-      const scoredAt = this.runFsm.state.scoredAtMs ?? _time;
-      if (_time - scoredAt > 180) {
+      this.ball.y = this.target.y - 1 + Math.sin(time / 120) * 0.8;
+      const scoredAt = this.runFsm.state.scoredAtMs ?? time;
+      if (time - scoredAt > 180) {
         this.applyRunResult(
-          this.runFsm.dispatch({ type: "swishHoldComplete" }, _time),
+          this.runFsm.dispatch({ type: "swishHoldComplete" }, time),
         );
       }
     }
@@ -413,7 +455,7 @@ export class PlayScene extends Phaser.Scene {
       this.tryCollectStar();
 
       if (this.target && throughHoop(this.target, this.ball)) {
-        this.onScore(_time);
+        this.onScore(time);
       } else if (
         this.ball.y > this.H + 90 ||
         this.ball.x < -120 ||
@@ -423,7 +465,7 @@ export class PlayScene extends Phaser.Scene {
       }
     }
 
-    this.drawFrame(_time);
+    this.drawFrame(time);
   }
 
   private onScore(time: number): void {

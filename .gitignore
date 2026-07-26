@@ -40,3 +40,4 @@ contracts/broadcast/
 *.local
 .vercel
 .vite/
+.worktrees/
