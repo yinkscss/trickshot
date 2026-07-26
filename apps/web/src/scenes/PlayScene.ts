@@ -1,11 +1,20 @@
 import Phaser from "phaser";
 import { layoutForSide, makeHoop } from "../game/layout";
 import {
+  beginDunkTransition,
+  finishDunkTransition,
+  mixRimCss,
+  updateDunkTransition,
+  type DunkTransition,
+} from "../game/transition";
+import {
   BALL_RADIUS,
   MIN_SHOT,
   RIM_RX,
   RIM_RY,
   aimFrom,
+  buildObstacles,
+  collideObstacles,
   hypot,
   netPullForHoop,
   predictPath,
@@ -15,6 +24,7 @@ import {
   type AimVector,
   type Hoop,
   type NetPull,
+  type Obstacle,
   type Projectile,
   type Vec2,
 } from "../physics";
@@ -22,19 +32,20 @@ import {
 const COURT = "#e8e8ea";
 const ORANGE = "#ff4d1a";
 const GREY = "#5f646e";
-const CYAN = "#4ecbff";
 const BALL_FILL = 0x1e5fff;
+const OBSTACLE_RED = 0xff3b30;
 
-type Mode = "aim" | "flying" | "scored";
+type Mode = "aim" | "flying" | "scored" | "transition" | "continue";
 
 /**
- * Pitch-parity core loop: custom 2D integrator, net-drag aim, wall banks.
- * Seamless dunk handoff / obstacles / continue UX land in later issues.
+ * Pitch-parity core loop: zigzag climb, one obstacle per shot,
+ * seamless dunk→next-loop handoff (no hard teleport).
  */
 export class PlayScene extends Phaser.Scene {
   private gfx!: Phaser.GameObjects.Graphics;
   private scoreText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
+  private continueText!: Phaser.GameObjects.Text;
 
   private mode: Mode = "aim";
   private score = 0;
@@ -42,6 +53,8 @@ export class PlayScene extends Phaser.Scene {
 
   private source: Hoop | null = null;
   private target: Hoop | null = null;
+  private obstacles: Obstacle[] = [];
+  private transition: DunkTransition | null = null;
   private ball: Projectile = { x: 0, y: 0, vx: 0, vy: 0 };
   private aimOrigin: Vec2 = { x: 0, y: 0 };
   private aim: AimVector = { x: 0, y: 0, pull: 0 };
@@ -76,6 +89,15 @@ export class PlayScene extends Phaser.Scene {
         color: "#9aa0aa",
       })
       .setOrigin(0.5);
+    this.continueText = this.add
+      .text(0, 0, "TAP TO RETRY", {
+        fontFamily: "Nunito, system-ui, sans-serif",
+        fontStyle: "800",
+        fontSize: "18px",
+        color: "#5f646e",
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
 
     this.syncSize();
     this.place(0);
@@ -93,7 +115,6 @@ export class PlayScene extends Phaser.Scene {
     const prevW = this.W;
     const prevH = this.H;
     this.syncSize();
-    // Re-place current shot so aim coords stay on-screen after resize
     if (this.mode === "aim" && prevW > 0 && prevH > 0) {
       this.place(this.score, false);
     }
@@ -104,8 +125,10 @@ export class PlayScene extends Phaser.Scene {
     this.H = this.scale.height;
     this.scoreText.setFontSize(Math.floor(this.W * 0.38));
     this.scoreText.setPosition(this.W / 2, this.H * 0.22);
+    this.continueText.setPosition(this.W / 2, this.H * 0.55);
   }
 
+  /** Hard snap (boot / continue / resize). Dunks use seamless transition. */
   private place(fromScore: number, advanceSide = true): void {
     if (fromScore === 0) this.side = 1;
     else if (advanceSide) this.side *= -1;
@@ -113,6 +136,7 @@ export class PlayScene extends Phaser.Scene {
     const L = layoutForSide(this.side, fromScore, this.W, this.H);
     this.source = makeHoop(L.sx, L.sy, L.sourceAng);
     this.target = makeHoop(L.tx, L.ty, L.targetAng);
+    this.obstacles = buildObstacles(L.sx, L.sy, L.tx, L.ty, fromScore, this.W);
     this.ball.x = L.sx;
     this.ball.y = L.sy - 1;
     this.ball.vx = 0;
@@ -122,12 +146,25 @@ export class PlayScene extends Phaser.Scene {
     this.dragging = false;
     this.dragPt = null;
     this.scoredAt = 0;
+    this.transition = null;
     this.aimOrigin = { x: L.sx, y: L.sy - 1 };
+    this.continueText.setVisible(false);
+  }
+
+  private resetRun(): void {
+    this.score = 0;
+    this.side = 1;
+    this.showHint = true;
+    this.scoreText.setText("0");
+    this.place(0);
   }
 
   private onDown(pointer: Phaser.Input.Pointer): void {
+    if (this.mode === "continue") {
+      this.resetRun();
+      return;
+    }
     if (this.mode !== "aim" || !this.source) return;
-    // Prefer world coords (RESIZE / camera-safe)
     const p = { x: pointer.worldX, y: pointer.worldY };
     if (hypot(p.x - this.source.x, p.y - this.source.y) > 160) return;
     this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
@@ -155,7 +192,6 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
 
-    // Launch from fixed origin — matches the preview exactly
     this.ball.x = this.aimOrigin.x;
     this.ball.y = this.aimOrigin.y;
     this.ball.vx = this.aim.x;
@@ -167,6 +203,13 @@ export class PlayScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     const dt = Math.min(delta / 1000, 0.033);
+
+    if (this.mode === "transition" && this.transition) {
+      const done = updateDunkTransition(this.transition, this.ball, dt);
+      if (done) this.completeTransition();
+      this.drawFrame();
+      return;
+    }
 
     if (this.source) this.source.wobble *= Math.pow(0.04, dt);
     if (this.target) this.target.wobble *= Math.pow(0.06, dt);
@@ -180,11 +223,9 @@ export class PlayScene extends Phaser.Scene {
 
     if (this.mode === "scored" && this.target) {
       this.ball.x = this.target.x;
-      this.ball.y =
-        this.target.y - 1 + Math.sin(_time / 120) * 0.8;
-      if (_time - this.scoredAt > 220) {
-        // Hard place next lane (seamless handoff is issue #3)
-        this.place(this.score);
+      this.ball.y = this.target.y - 1 + Math.sin(_time / 120) * 0.8;
+      if (_time - this.scoredAt > 180) {
+        this.startTransition();
       }
     }
 
@@ -192,6 +233,7 @@ export class PlayScene extends Phaser.Scene {
       stepProjectile(this.ball, dt, this.W);
       if (this.source) rimHit(this.source, this.ball);
       if (this.target) rimHit(this.target, this.ball);
+      collideObstacles(this.obstacles, this.ball, dt);
 
       if (this.target && throughHoop(this.target, this.ball)) {
         this.onScore(_time);
@@ -200,9 +242,7 @@ export class PlayScene extends Phaser.Scene {
         this.ball.x < -120 ||
         this.ball.x > this.W + 120
       ) {
-        // Miss → same lane (continue UX is issue #4)
-        this.place(this.score, false);
-        if (this.score === 0) this.showHint = true;
+        this.onMiss();
       }
     }
 
@@ -210,7 +250,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private onScore(time: number): void {
-    if (this.scoredAt || !this.target) return;
+    if (this.scoredAt || !this.target || this.mode === "transition") return;
     this.scoredAt = time;
     this.score += 1;
     this.target.wobble = 1.5;
@@ -222,35 +262,82 @@ export class PlayScene extends Phaser.Scene {
     this.scoreText.setText(String(this.score));
   }
 
+  private onMiss(): void {
+    this.mode = "continue";
+    this.dragging = false;
+    this.dragPt = null;
+    this.continueText.setVisible(true);
+  }
+
+  private startTransition(): void {
+    if (!this.source || !this.target || this.mode === "transition") return;
+    const { side, transition } = beginDunkTransition({
+      side: this.side,
+      score: this.score,
+      width: this.W,
+      height: this.H,
+      source: this.source,
+      target: this.target,
+      obstacles: this.obstacles,
+    });
+    this.side = side;
+    this.transition = transition;
+    this.source = null;
+    this.target = null;
+    this.obstacles = [];
+    this.mode = "transition";
+    this.dragging = false;
+    this.dragPt = null;
+  }
+
+  private completeTransition(): void {
+    if (!this.transition) return;
+    const next = finishDunkTransition(this.transition);
+    this.source = next.source;
+    this.target = next.target;
+    this.obstacles = next.obstacles;
+    this.ball = next.ball;
+    this.aimOrigin = next.aimOrigin;
+    this.transition = null;
+    this.mode = "aim";
+    this.aim = { x: 0, y: 0, pull: 0 };
+    this.dragging = false;
+    this.dragPt = null;
+    this.scoredAt = 0;
+  }
+
   private drawFrame(): void {
     const g = this.gfx;
     g.clear();
 
-    // Edge rails (hint sides deflect)
     g.fillStyle(0x5a606e, 0.14);
     g.fillRect(0, 0, 14, this.H);
     g.fillRect(this.W - 14, 0, 14, this.H);
 
-    if (this.target) this.drawHoop(g, this.target, ORANGE, null);
-    if (this.source) {
-      const pull =
-        this.mode === "aim" && this.dragging
-          ? netPullForHoop(
-              this.source,
-              this.dragPt,
-              this.dragging,
-              this.W,
-              this.H,
-            )
-          : null;
-      this.drawHoop(g, this.source, GREY, pull);
+    if (this.mode === "transition" && this.transition) {
+      this.drawTransition(g, this.transition);
+    } else {
+      this.drawObstacles(g, this.obstacles, 1);
+      if (this.target) this.drawHoop(g, this.target, ORANGE, null);
+      if (this.source) {
+        const pull =
+          this.mode === "aim" && this.dragging
+            ? netPullForHoop(
+                this.source,
+                this.dragPt,
+                this.dragging,
+                this.W,
+                this.H,
+              )
+            : null;
+        this.drawHoop(g, this.source, GREY, pull);
+      }
     }
 
     if (this.mode === "aim" && this.dragging) {
       this.drawAimDots(g);
     }
 
-    // Ball stays seated at aimOrigin while aiming — net takes the stretch
     this.drawBall(g, this.ball.x, this.ball.y);
 
     this.hintText.setVisible(
@@ -261,6 +348,65 @@ export class PlayScene extends Phaser.Scene {
         this.source.x,
         this.source.y + 62 + Math.sin(this.time.now / 220) * 6,
       );
+    }
+  }
+
+  private drawTransition(g: Phaser.GameObjects.Graphics, tr: DunkTransition): void {
+    if (tr.oldObstacles.length && tr.leave) {
+      const fade = tr.leave.a ?? 1;
+      this.drawObstacles(g, tr.oldObstacles, fade);
+    }
+    if (tr.nextObstacles.length && tr.arrive) {
+      const fade = tr.arrive.a ?? 1;
+      this.drawObstacles(g, tr.nextObstacles, fade * 0.85);
+    }
+    if (tr.leave) {
+      const h = makeHoop(tr.leave.x, tr.leave.y, tr.leave.ang);
+      h.wobble = tr.leave.wobble;
+      this.drawHoop(g, h, GREY, null, tr.leave.a ?? 1);
+    }
+    if (tr.arrive) {
+      const h = makeHoop(tr.arrive.x, tr.arrive.y, tr.arrive.ang);
+      h.wobble = tr.arrive.wobble;
+      this.drawHoop(g, h, ORANGE, null, tr.arrive.a ?? 1);
+    }
+    if (tr.carry) {
+      const h = makeHoop(tr.carry.x, tr.carry.y, tr.carry.ang);
+      h.wobble = tr.carry.wobble;
+      const color = mixRimCss(tr.carry.colorT ?? 0);
+      this.drawHoop(g, h, color, null, 1);
+    }
+  }
+
+  private drawObstacles(
+    g: Phaser.GameObjects.Graphics,
+    list: Obstacle[],
+    alpha: number,
+  ): void {
+    for (const o of list) {
+      if (o.type === "wall") {
+        g.lineStyle(o.w, OBSTACLE_RED, alpha);
+        g.beginPath();
+        g.moveTo(o.x, o.y - o.h / 2);
+        g.lineTo(o.x, o.y + o.h / 2);
+        g.strokePath();
+        g.lineStyle(o.w * 0.35, 0xffffff, 0.25 * alpha);
+        g.beginPath();
+        g.moveTo(o.x, o.y - o.h / 2);
+        g.lineTo(o.x, o.y + o.h / 2);
+        g.strokePath();
+      } else if (o.type === "bumper") {
+        const p =
+          1 +
+          Math.sin(this.time.now / 180) * 0.04 +
+          (o.pulse || 0) * 0.15;
+        g.fillStyle(OBSTACLE_RED, alpha);
+        g.fillCircle(o.x, o.y, o.r * p);
+        g.fillStyle(0xffffff, alpha);
+        g.fillCircle(o.x, o.y, o.r * 0.45 * p);
+        g.fillStyle(0xffffff, 0.35 * alpha);
+        g.fillCircle(o.x - o.r * 0.25, o.y - o.r * 0.25, o.r * 0.18);
+      }
     }
   }
 
@@ -284,10 +430,14 @@ export class PlayScene extends Phaser.Scene {
     g.fillStyle(BALL_FILL, 1);
     g.fillCircle(x, y, BALL_RADIUS);
     g.fillStyle(0xffffff, 0.35);
-    g.fillEllipse(x - BALL_RADIUS * 0.3, y - BALL_RADIUS * 0.35, BALL_RADIUS * 0.55, BALL_RADIUS * 0.32);
+    g.fillEllipse(
+      x - BALL_RADIUS * 0.3,
+      y - BALL_RADIUS * 0.35,
+      BALL_RADIUS * 0.55,
+      BALL_RADIUS * 0.32,
+    );
   }
 
-  /** Local hoop point → world (avoids Phaser Graphics canvas-matrix leaks) */
   private hoopToWorld(h: Hoop, tipAng: number, lx: number, ly: number): Vec2 {
     const c = Math.cos(tipAng);
     const s = Math.sin(tipAng);
@@ -320,30 +470,42 @@ export class PlayScene extends Phaser.Scene {
     g.strokePath();
   }
 
+  private cssToColor(colorCss: string): number {
+    if (colorCss.startsWith("rgb")) {
+      const m = colorCss.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+      if (m) {
+        return (
+          (Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3])
+        );
+      }
+    }
+    return Phaser.Display.Color.HexStringToColor(colorCss).color;
+  }
+
   private drawHoop(
     g: Phaser.GameObjects.Graphics,
     h: Hoop,
     colorCss: string,
     pull: NetPull | null,
+    alpha = 1,
   ): void {
-    const color = Phaser.Display.Color.HexStringToColor(colorCss).color;
+    const color = this.cssToColor(colorCss);
     const p = pull ?? { lx: 0, ly: 0, amt: 0 };
     const tip = p.amt * 0.22;
     const tipAng = h.ang + Math.atan2(p.lx, 40) * tip;
 
-    // Contact shadow
     const shadow = this.hoopToWorld(
       h,
       tipAng,
       2 + p.lx * p.amt * 0.04,
       10 + p.ly * p.amt * 0.04,
     );
-    g.fillStyle(0x000000, 0.08);
+    g.fillStyle(0x000000, 0.08 * alpha);
     g.fillEllipse(shadow.x, shadow.y, RIM_RX * 1.9, RIM_RY * 2.2);
 
-    this.drawWovenNet(g, h, tipAng, h.wobble || 0, p);
+    this.drawWovenNet(g, h, tipAng, h.wobble || 0, p, alpha);
 
-    this.strokeEllipseWorld(g, h, tipAng, RIM_RX, RIM_RY, color, 8, 1);
+    this.strokeEllipseWorld(g, h, tipAng, RIM_RX, RIM_RY, color, 8, alpha);
     this.strokeEllipseWorld(
       g,
       h,
@@ -352,17 +514,17 @@ export class PlayScene extends Phaser.Scene {
       RIM_RY - 2.2,
       0x000000,
       2,
-      0.18,
+      0.18 * alpha,
     );
   }
 
-  /** Diamond mesh pouch — stretches toward drag (pitch `drawWovenNet`) */
   private drawWovenNet(
     g: Phaser.GameObjects.Graphics,
     h: Hoop,
     tipAng: number,
     wob: number,
     pull: NetPull,
+    alpha = 1,
   ): void {
     const amt = pull.amt || 0;
     const depth = 52 + wob * 16 + amt * 28;
@@ -390,7 +552,7 @@ export class PlayScene extends Phaser.Scene {
       return this.hoopToWorld(h, tipAng, x, y);
     };
 
-    g.fillStyle(0xffffff, 0.2 + amt * 0.12);
+    g.fillStyle(0xffffff, (0.2 + amt * 0.12) * alpha);
     g.beginPath();
     const p00 = pt(0, 0);
     g.moveTo(p00.x, p00.y);
@@ -405,7 +567,7 @@ export class PlayScene extends Phaser.Scene {
     g.closePath();
     g.fillPath();
 
-    g.lineStyle(2.3, 0xffffff, 0.98);
+    g.lineStyle(2.3, 0xffffff, 0.98 * alpha);
     for (let i = 0; i < cols; i++) {
       g.beginPath();
       const a = pt(i, 0);
@@ -417,7 +579,7 @@ export class PlayScene extends Phaser.Scene {
       g.strokePath();
     }
 
-    g.lineStyle(2.05, 0xffffff, 0.98);
+    g.lineStyle(2.05, 0xffffff, 0.98 * alpha);
     for (let j = 1; j <= rows; j++) {
       g.beginPath();
       for (let i = 0; i < cols; i++) {
@@ -428,7 +590,7 @@ export class PlayScene extends Phaser.Scene {
       g.strokePath();
     }
 
-    g.lineStyle(1.7, 0xffffff, 0.9);
+    g.lineStyle(1.7, 0xffffff, 0.9 * alpha);
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols - 1; i++) {
         const a = pt(i, j);

@@ -5,3 +5,4 @@ export * from "./walls";
 export * from "./integrate";
 export * from "./aim";
 export * from "./hoopCollision";
+export * from "./obstacles";
