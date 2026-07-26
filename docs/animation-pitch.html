@@ -153,7 +153,9 @@
   const BR = 15;
   const RX = 40;
   const RY = 13;
-  const MAX_POW = 1200;
+  const MAX_POW = 1450;
+  const WALL_REST = 0.9; // must match flight + aim preview
+  const MIN_SHOT = 160;
 
   const S = {
     mode: "aim",
@@ -168,6 +170,7 @@
     obstacles: [],
     drag: false,
     dragPt: null,
+    aimOrigin: { x: 0, y: 0 }, // fixed launch point (no bob while aiming)
     aim: { x: 0, y: 0 },
     trail: [],
     rings: [],
@@ -181,6 +184,12 @@
     scoredAt: 0,
     side: 1, // 1 = source on left this shot; -1 = source on right
   };
+
+  function edgePad() { return BR + 3; }
+
+  function maxPull() {
+    return Math.min(W, H) * 0.42;
+  }
 
   function resize() {
     const r = document.getElementById("phone").getBoundingClientRect();
@@ -319,23 +328,38 @@
     place(0);
   }
 
-  // Invisible side walls — screen edges deflect the ball
-  function collideScreenEdges() {
-    const b = S.ball;
-    const pad = BR + 3;
-    if (b.x < pad) {
-      b.x = pad;
-      if (b.vx < 0) {
-        b.vx = -b.vx * 0.9;
-        burst(pad, b.y, CYAN, 5);
+  // Shared wall bounce — used by flight AND aim preview
+  function applyWallBounce(p, withFX = false) {
+    const pad = edgePad();
+    let hit = false;
+    if (p.x < pad) {
+      p.x = pad;
+      if (p.vx < 0) {
+        p.vx = -p.vx * WALL_REST;
+        hit = true;
+        if (withFX) burst(pad, p.y, CYAN, 5);
       }
-    } else if (b.x > W - pad) {
-      b.x = W - pad;
-      if (b.vx > 0) {
-        b.vx = -b.vx * 0.9;
-        burst(W - pad, b.y, CYAN, 5);
+    } else if (p.x > W - pad) {
+      p.x = W - pad;
+      if (p.vx > 0) {
+        p.vx = -p.vx * WALL_REST;
+        hit = true;
+        if (withFX) burst(W - pad, p.y, CYAN, 5);
       }
     }
+    return hit;
+  }
+
+  function collideScreenEdges() {
+    applyWallBounce(S.ball, true);
+  }
+
+  // One physics step identical to flight (gravity + walls)
+  function stepProjectile(p, dt) {
+    p.vy += G * dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    return applyWallBounce(p, false);
   }
 
   // ——— NET: woven pouch with diamond mesh + thick steel rim ———
@@ -663,21 +687,30 @@
   }
 
   function predictDots(vx, vy) {
-    if (hypot(vx, vy) < 50) return;
-    let x = S.ball.x, y = S.ball.y, tvx = vx, tvy = vy;
-    const dt = 1 / 50;
-    for (let i = 0; i < 22; i++) {
-      for (let k = 0; k < 2; k++) {
-        tvy += G * dt;
-        x += tvx * dt;
-        y += tvy * dt;
-      }
-      const fade = 1 - i / 22;
+    if (hypot(vx, vy) < 40) return;
+    // Same integrator as real flight so bank shots read true
+    const p = {
+      x: S.aimOrigin.x,
+      y: S.aimOrigin.y,
+      vx, vy,
+    };
+    const dt = 1 / 120;
+    const steps = 90;
+    let drawn = 0;
+    for (let i = 0; i < steps; i++) {
+      const bounced = stepProjectile(p, dt);
+      if (i % 3 !== 0 && !bounced) continue;
+      const fade = 1 - drawn / 28;
+      if (fade <= 0) break;
+      const r = bounced ? 4.2 : 2.4 + 2.0 * fade;
       ctx.beginPath();
-      ctx.arc(x, y, 2.2 + 2.2 * fade, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,77,26,${0.95 * fade})`;
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = bounced
+        ? `rgba(78,203,255,${0.95 * fade})`
+        : `rgba(255,77,26,${0.95 * fade})`;
       ctx.fill();
-      if (y > H + 30 || x < -40 || x > W + 40) break;
+      drawn++;
+      if (p.y > H + 40 || p.y < -60 || drawn > 28) break;
     }
   }
 
@@ -976,22 +1009,40 @@
     }, 320);
   }
 
-  function aimFrom(from, to) {
-    let dx = from.x - to.x, dy = from.y - to.y;
+  // Slingshot: velocity opposite the drag, from fixed hoop origin
+  function aimFrom(origin, finger) {
+    const dx = origin.x - finger.x;
+    const dy = origin.y - finger.y;
     const len = hypot(dx, dy);
-    const pull = clamp(len, 0, 150);
-    const pow = (pull / 150) * MAX_POW;
-    if (len < 1) return { x: 0, y: 0 };
-    return { x: (dx / len) * pow, y: (dy / len) * pow };
+    if (len < 1) return { x: 0, y: 0, pull: 0 };
+    const cap = maxPull();
+    const pull = clamp(len, 0, cap);
+    // Linear power vs pull distance — preview uses the same vector
+    const pow = (pull / cap) * MAX_POW;
+    return {
+      x: (dx / len) * pow,
+      y: (dy / len) * pow,
+      pull,
+    };
   }
 
   function ptr(e) {
     const r = canvas.getBoundingClientRect();
-    const t = e.touches ? e.touches[0] : e;
+    const t = (e.changedTouches && e.changedTouches[0])
+      || (e.touches && e.touches[0])
+      || e;
     return {
       x: ((t.clientX - r.left) / r.width) * W,
       y: ((t.clientY - r.top) / r.height) * H,
     };
+  }
+
+  function beginAim(p) {
+    S.aimOrigin = { x: S.source.x, y: S.source.y - 1 };
+    S.drag = true;
+    S.dragPt = p;
+    S.aim = aimFrom(S.aimOrigin, p);
+    S.showHint = false;
   }
 
   function down(e) {
@@ -1003,29 +1054,36 @@
       S.contA = 0;
       return;
     }
-    if (S.mode !== "aim") return;
+    if (S.mode !== "aim" || !S.source) return;
     const p = ptr(e);
-    if (hypot(p.x - S.ball.x, p.y - S.ball.y) > 90) return;
-    S.drag = true;
-    S.dragPt = p;
-    S.aim = aimFrom({ x: S.ball.x, y: S.ball.y }, p);
-    S.showHint = false;
+    // Generous grab: ball, whole source hoop, or nearby
+    const dBall = hypot(p.x - S.source.x, p.y - S.source.y);
+    if (dBall > 120) return;
+    beginAim(p);
   }
   function move(e) {
-    e.preventDefault();
     if (!S.drag || S.mode !== "aim") return;
+    e.preventDefault();
     S.dragPt = ptr(e);
-    S.aim = aimFrom({ x: S.ball.x, y: S.ball.y }, S.dragPt);
+    S.aim = aimFrom(S.aimOrigin, S.dragPt);
   }
   function up(e) {
-    e.preventDefault();
     if (!S.drag || S.mode !== "aim") return;
+    e.preventDefault();
+    // Final sample from release point (changedTouches on touchend)
+    if (e.type === "touchend" || e.type === "mouseup") {
+      S.dragPt = ptr(e);
+      S.aim = aimFrom(S.aimOrigin, S.dragPt);
+    }
     S.drag = false;
-    if (hypot(S.aim.x, S.aim.y) < 200) {
+    if (hypot(S.aim.x, S.aim.y) < MIN_SHOT) {
       S.aim = { x: 0, y: 0 };
       if (S.score === 0) S.showHint = true;
       return;
     }
+    // Launch from fixed origin — matches the preview exactly
+    S.ball.x = S.aimOrigin.x;
+    S.ball.y = S.aimOrigin.y;
     S.ball.vx = S.aim.x;
     S.ball.vy = S.aim.y;
     S.mode = "flying";
@@ -1045,6 +1103,7 @@
   canvas.addEventListener("touchstart", down, { passive: false });
   window.addEventListener("touchmove", move, { passive: false });
   window.addEventListener("touchend", up, { passive: false });
+  window.addEventListener("touchcancel", up, { passive: false });
 
   let last = performance.now();
 
@@ -1073,15 +1132,21 @@
     if (S.comboFX) S.comboFX.dt = dt;
 
     if (S.mode === "aim" && S.source) {
-      S.ball.x = S.source.x;
-      S.ball.y = S.source.y - 1 + Math.sin(performance.now() / 260) * 1.5;
+      if (S.drag && S.dragPt) {
+        // Pull ball toward finger (slingshot stretch) — launch still uses aimOrigin
+        const stretch = 0.32;
+        S.ball.x = S.aimOrigin.x + (S.dragPt.x - S.aimOrigin.x) * stretch;
+        S.ball.y = S.aimOrigin.y + (S.dragPt.y - S.aimOrigin.y) * stretch;
+      } else {
+        S.aimOrigin = { x: S.source.x, y: S.source.y - 1 };
+        S.ball.x = S.aimOrigin.x;
+        S.ball.y = S.aimOrigin.y + Math.sin(performance.now() / 260) * 1.2;
+      }
     }
 
     if (S.mode === "flying") {
       const b = S.ball;
-      b.vy += G * dt;
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
+      stepProjectile(b, dt);
 
       if (hypot(b.vx, b.vy) > 70) {
         S.trail.push({
@@ -1094,7 +1159,16 @@
       rimHit(S.source);
       rimHit(S.target);
       collideObstacles(dt);
-      collideScreenEdges();
+      // Walls already applied inside stepProjectile; FX on hard hits
+      {
+        const pad = edgePad();
+        if (b.x <= pad + 0.5 || b.x >= W - pad - 0.5) {
+          // spark only when we just reflected (velocity away from wall)
+          if ((b.x <= pad + 0.5 && b.vx > 80) || (b.x >= W - pad - 0.5 && b.vx < -80)) {
+            if (Math.random() < 0.35) burst(b.x, b.y, CYAN, 3);
+          }
+        }
+      }
 
       if (S.starOn && hypot(b.x - S.star.x, b.y - S.star.y) < 24) {
         S.starOn = false;
@@ -1167,14 +1241,23 @@
     if (S.mode === "aim" && S.drag) {
       predictDots(S.aim.x, S.aim.y);
       if (S.dragPt) {
+        // Rubber band from launch origin → finger
         ctx.beginPath();
-        ctx.moveTo(S.ball.x, S.ball.y);
+        ctx.moveTo(S.aimOrigin.x, S.aimOrigin.y);
         ctx.lineTo(S.dragPt.x, S.dragPt.y);
-        ctx.strokeStyle = "rgba(255,77,26,0.3)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = "rgba(255,77,26,0.35)";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 6]);
         ctx.stroke();
         ctx.setLineDash([]);
+        // Power ring
+        const pull = S.aim.pull || 0;
+        const t = pull / maxPull();
+        ctx.beginPath();
+        ctx.arc(S.aimOrigin.x, S.aimOrigin.y, 18 + t * 22, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,77,26,${0.25 + t * 0.45})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
       }
     }
 
