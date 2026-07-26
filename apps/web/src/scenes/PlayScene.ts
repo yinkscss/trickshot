@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import {
   RunFSM,
   allowsContinue,
+  comboLabel,
   createInputLogRecorder,
   createScoreState,
   resolveRunSeed,
@@ -22,7 +23,6 @@ import {
   type DunkTransition,
 } from "../game/transition";
 import {
-  BALL_RADIUS,
   MIN_SHOT,
   aimFrom,
   collideObstacles,
@@ -35,47 +35,29 @@ import {
   throughHoop,
   type AimVector,
   type Hoop,
-  type NetPull,
   type Obstacle,
   type Projectile,
   type Vec2,
 } from "../physics";
 import {
   COURT,
-  GREY,
-  ORANGE,
-  comboChipText,
-  drawAimDots,
-  drawAimRubberBand,
-  drawCourt,
-  drawDragHint,
-  drawHoop,
-  drawMarble,
-  drawObstacles,
-  drawPauseIcon,
-  drawStarIcon,
-  drawTrail,
-  hintBob,
-  hintTextY,
-  hudStarPosition,
-  hudStarTextPosition,
+  PitchCanvasRenderer,
+  safeTopInset,
   spawnLaunchRings,
   updateTrailEffects,
   type LaunchRing,
+  type PitchDrawState,
   type TrailParticle,
+  type VisualMode,
 } from "../render";
 
 /**
  * Pitch-parity core loop: zigzag climb, one obstacle per shot,
- * seamless dunk→next-loop handoff (no hard teleport).
+ * seamless dunk→next-loop handoff. Rendering is Canvas2D pitch draw
+ * blitted into a Phaser CanvasTexture.
  */
 export class PlayScene extends Phaser.Scene {
-  private gfx!: Phaser.GameObjects.Graphics;
-  private scoreText!: Phaser.GameObjects.Text;
-  private starText!: Phaser.GameObjects.Text;
-  private comboText!: Phaser.GameObjects.Text;
-  private hintText!: Phaser.GameObjects.Text;
-  private continueText!: Phaser.GameObjects.Text;
+  private pitch!: PitchCanvasRenderer;
 
   private readonly trail: TrailParticle[] = [];
   private readonly rings: LaunchRing[] = [];
@@ -106,6 +88,9 @@ export class PlayScene extends Phaser.Scene {
   private dragging = false;
   private dragPt: Vec2 | null = null;
   private showHint = true;
+  private continueLabel: string | null = null;
+  /** DEV screenshot pose — freezes sim and drives visualMode. */
+  private poseOverride: VisualMode | null = null;
 
   private W = 390;
   private H = 780;
@@ -116,56 +101,7 @@ export class PlayScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor(COURT);
-    this.gfx = this.add.graphics().setDepth(5);
-
-    this.scoreText = this.add
-      .text(0, 0, "0", {
-        fontFamily: "Nunito, system-ui, sans-serif",
-        fontStyle: "900",
-        color: "rgba(110,114,124,0.16)",
-      })
-      .setOrigin(0.5)
-      .setDepth(1);
-
-    this.starText = this.add
-      .text(0, 0, "0", {
-        fontFamily: "Nunito, system-ui, sans-serif",
-        fontStyle: "800",
-        fontSize: "22px",
-        color: "#555964",
-      })
-      .setOrigin(1, 0)
-      .setDepth(20);
-
-    this.comboText = this.add
-      .text(48, 40, "", {
-        fontFamily: "Nunito, system-ui, sans-serif",
-        fontStyle: "900",
-        fontSize: "14px",
-        color: ORANGE,
-      })
-      .setDepth(20);
-
-    this.hintText = this.add
-      .text(0, 0, "DRAG IT!", {
-        fontFamily: "Nunito, system-ui, sans-serif",
-        fontStyle: "800",
-        fontSize: "15px",
-        color: "#9aa0aa",
-      })
-      .setOrigin(0.5)
-      .setDepth(20);
-
-    this.continueText = this.add
-      .text(0, 0, "TAP TO RETRY", {
-        fontFamily: "Nunito, system-ui, sans-serif",
-        fontStyle: "800",
-        fontSize: "18px",
-        color: "#5f646e",
-      })
-      .setOrigin(0.5)
-      .setVisible(false)
-      .setDepth(20);
+    this.pitch = new PitchCanvasRenderer(this);
 
     this.syncSize();
     this.applyRunResult(this.runFsm.dispatch({ type: "bootComplete" }));
@@ -176,6 +112,17 @@ export class PlayScene extends Phaser.Scene {
     this.input.on("pointerupoutside", this.onUp, this);
 
     this.scale.on("resize", this.onResize, this);
+
+    if (import.meta.env.DEV) {
+      const w = window as Window & {
+        __trickshotScene?: PlayScene;
+        __trickshotCapture?: () => string;
+        __trickshotPose?: (kind: "idle" | "aim" | "flight" | "scored") => void;
+      };
+      w.__trickshotScene = this;
+      w.__trickshotCapture = () => this.pitch.toDataURL("image/png");
+      w.__trickshotPose = (kind) => this.devPose(kind);
+    }
   }
 
   private onResize = (gameSize: Phaser.Structs.Size): void => {
@@ -191,21 +138,7 @@ export class PlayScene extends Phaser.Scene {
   private syncSize(): void {
     this.W = this.scale.width;
     this.H = this.scale.height;
-    this.scoreText.setFontSize(Math.floor(this.W * 0.38));
-    this.scoreText.setPosition(this.W / 2, this.H * 0.22);
-    this.continueText.setPosition(this.W / 2, this.H * 0.55);
-
-    const starPos = hudStarTextPosition(this.W);
-    this.starText.setPosition(starPos.x, starPos.y);
-  }
-
-  private syncHud(): void {
-    this.starText.setText(String(this.scoreState.stars));
-    const chip = comboChipText(this.scoreState.chainLength);
-    this.comboText.setText(chip ?? "");
-    this.comboText.setVisible(
-      !!chip && this.runFsm.runState !== "continue",
-    );
+    this.pitch.resize(this.W, this.H);
   }
 
   /** Mode-matrix seed resolution (`per_run` / `utc_daily` / `tournament_id`). */
@@ -242,9 +175,8 @@ export class PlayScene extends Phaser.Scene {
     this.trail.length = 0;
     this.rings.length = 0;
     this.aimOrigin = { x: L.source.x, y: L.source.y - 1 };
-    this.continueText.setVisible(false);
+    this.continueLabel = null;
     this.applyShotStar(fromScore);
-    this.syncHud();
   }
 
   private applyShotStar(fromScore: number): void {
@@ -306,20 +238,17 @@ export class PlayScene extends Phaser.Scene {
           this.place(intent.score, intent.advanceSide);
           break;
         case "showContinuePrompt":
-          this.continueText.setVisible(true);
+          this.continueLabel = "TAP TO RETRY";
           break;
         case "hideContinuePrompt":
-          this.continueText.setVisible(false);
+          this.continueLabel = null;
           break;
         case "runEnded":
-          this.continueText.setText("RUN OVER");
-          this.continueText.setVisible(true);
+          this.continueLabel = "RUN OVER";
           break;
       }
     }
     this.score = this.runFsm.state.score;
-    this.scoreText.setText(String(this.scoreState.score));
-    this.syncHud();
   }
 
   private tryCollectStar(): void {
@@ -329,8 +258,6 @@ export class PlayScene extends Phaser.Scene {
         type: "collectStar",
       });
       this.starPos = null;
-      this.scoreText.setText(String(this.scoreState.score));
-      this.syncHud();
     }
   }
 
@@ -352,7 +279,7 @@ export class PlayScene extends Phaser.Scene {
   private resetRun(): void {
     this.inputLog.record({ type: "continue_accept" }, this.time.now);
     this.showHint = true;
-    this.continueText.setText("TAP TO RETRY");
+    this.continueLabel = "TAP TO RETRY";
     this.scoreState = reduceScoreEvent(this.scoreState, {
       type: "acceptContinue",
     });
@@ -427,6 +354,11 @@ export class PlayScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    if (this.poseOverride) {
+      this.drawFrame(_time);
+      return;
+    }
+
     const dt = Math.min(delta / 1000, 0.033);
     const flying = this.runFsm.runState === "flying";
 
@@ -505,10 +437,8 @@ export class PlayScene extends Phaser.Scene {
     this.applyRunResult(this.runFsm.dispatch({ type: "throughHoop" }, time));
     this.inputLog.record({ type: "through_hoop" }, time);
     this.scoreState = reduceScoreEvent(this.scoreState, { type: "dunk" });
-    this.scoreText.setText(String(this.scoreState.score));
     this.trail.length = 0;
     this.rings.length = 0;
-    this.syncHud();
   }
 
   private startTransition(): void {
@@ -548,160 +478,187 @@ export class PlayScene extends Phaser.Scene {
     this.applyShotStar(this.runFsm.state.score);
   }
 
-  private comboHeat(): number {
-    return Math.min(1, this.scoreState.chainLength / 5);
+  private visualMode(): VisualMode {
+    if (this.poseOverride) return this.poseOverride;
+    switch (this.runFsm.runState) {
+      case "aiming":
+        return "aim";
+      case "flying":
+        return "flying";
+      case "scored":
+        return "scored";
+      case "continue":
+        return "continue";
+      case "transition":
+        return "transition";
+      case "ended":
+        return "ended";
+      default:
+        return "boot";
+    }
+  }
+
+  private buildDrawState(timeMs: number): PitchDrawState {
+    const mode = this.visualMode();
+    const sourcePull =
+      mode === "aim" && this.dragging && this.source
+        ? netPullForHoop(
+            this.source,
+            this.dragPt,
+            this.dragging,
+            this.W,
+            this.H,
+          )
+        : null;
+
+    const predictDots =
+      mode === "aim" && this.dragging
+        ? predictPath(
+            this.aimOrigin,
+            this.aim.x,
+            this.aim.y,
+            this.W,
+            this.H,
+          )
+        : [];
+
+    const chip = comboLabel(this.scoreState.chainLength);
+
+    let transition: PitchDrawState["transition"] = null;
+    if (mode === "transition" && this.transition) {
+      const tr = this.transition;
+      transition = {
+        leave: tr.leave,
+        arrive: tr.arrive,
+        arriveTo: tr.arriveTo,
+        carry: tr.carry
+          ? {
+              x: tr.carry.x,
+              y: tr.carry.y,
+              ang: tr.carry.ang,
+              wobble: tr.carry.wobble,
+              color: mixRimCss(tr.carry.colorT ?? 0),
+            }
+          : null,
+        oldObstacles: tr.oldObstacles,
+        nextObstacles: tr.nextObstacles,
+      };
+    }
+
+    return {
+      W: this.W,
+      H: this.H,
+      timeMs,
+      mode,
+      score: this.scoreState.score,
+      stars: this.scoreState.stars,
+      combo: this.scoreState.chainLength,
+      safeTop: safeTopInset(),
+      ball: { x: this.ball.x, y: this.ball.y },
+      source: this.source,
+      target: this.target,
+      sourcePull,
+      obstacles: this.obstacles,
+      star: this.starPos,
+      starOn: !!this.scoreState.starActive && !!this.starPos,
+      drag: this.dragging,
+      dragPt: this.dragPt,
+      aimOrigin: this.aimOrigin,
+      aimPull: this.aim.pull,
+      maxPull: maxPull(this.W, this.H),
+      predictDots,
+      trail: this.trail,
+      rings: this.rings,
+      showHint: this.showHint,
+      comboChip: chip,
+      continueLabel:
+        mode === "continue" || mode === "ended" ? this.continueLabel : null,
+      transition,
+    };
   }
 
   private drawFrame(timeMs: number): void {
-    const g = this.gfx;
-    g.clear();
-
-    drawCourt(g, this.W, this.H);
-
-    const comboHeat = this.comboHeat();
-
-    if (this.runFsm.runState === "transition" && this.transition) {
-      this.drawTransition(g, this.transition, timeMs, comboHeat);
-    } else {
-      drawObstacles(g, this.obstacles, 1, timeMs);
-
-      if (this.scoreState.starActive && this.starPos) {
-        drawStarIcon(
-          g,
-          this.starPos.x,
-          this.starPos.y,
-          12,
-          timeMs / 800,
-        );
-      }
-
-      if (this.source) {
-        const pull =
-          this.runFsm.runState === "aiming" && this.dragging
-            ? netPullForHoop(
-                this.source,
-                this.dragPt,
-                this.dragging,
-                this.W,
-                this.H,
-              )
-            : null;
-        drawHoop(g, this.source, GREY, {
-          withBall: this.runFsm.runState === "aiming",
-          ballX: this.ball.x,
-          ballY: this.ball.y,
-          pullNet: this.runFsm.runState === "aiming" && this.dragging,
-          pull,
-          timeMs,
-          comboHeat,
-        });
-      }
-
-      if (this.target) {
-        drawHoop(g, this.target, ORANGE, {
-          withBall: this.runFsm.runState === "scored",
-          ballX: this.ball.x,
-          ballY: this.ball.y,
-          timeMs,
-          comboHeat,
-        });
-      }
-    }
-
-    drawTrail(g, this.trail, this.rings);
-
-    if (this.runFsm.runState === "aiming" && this.dragging) {
-      const dots = predictPath(
-        this.aimOrigin,
-        this.aim.x,
-        this.aim.y,
-        this.W,
-        this.H,
-      );
-      drawAimDots(g, dots);
-      if (this.dragPt) {
-        drawAimRubberBand(
-          g,
-          this.aimOrigin.x,
-          this.aimOrigin.y,
-          this.dragPt.x,
-          this.dragPt.y,
-          this.aim.pull,
-          maxPull(this.W, this.H),
-        );
-      }
-    }
-
-    if (
-      this.runFsm.runState === "flying" ||
-      this.runFsm.runState === "continue"
-    ) {
-      drawMarble(g, this.ball.x, this.ball.y, BALL_RADIUS);
-    }
-
-    drawPauseIcon(g);
-    const starHud = hudStarPosition(this.W);
-    drawStarIcon(g, starHud.x, starHud.y, 10);
-
-    const showHint =
-      this.showHint &&
-      this.runFsm.runState === "aiming" &&
-      !this.dragging &&
-      !!this.source;
-    this.hintText.setVisible(showHint);
-    if (this.source && showHint) {
-      const bob = hintBob(timeMs);
-      const baseY = this.source.y + 62;
-      drawDragHint(g, this.source.x, baseY, bob);
-      this.hintText.setPosition(this.source.x, hintTextY(baseY, bob));
-    }
+    this.pitch.render(this.buildDrawState(timeMs));
   }
 
-  private drawTransition(
-    g: Phaser.GameObjects.Graphics,
-    tr: DunkTransition,
-    timeMs: number,
-    comboHeat: number,
-  ): void {
-    if (tr.oldObstacles.length && tr.leave) {
-      const fade = tr.leave.a ?? 1;
-      drawObstacles(g, tr.oldObstacles, fade, timeMs);
+  /**
+   * DEV-only: force visual poses for screenshot capture through the real
+   * Canvas2D pitch path (does not alter physics packages).
+   */
+  private devPose(kind: "idle" | "aim" | "flight" | "scored"): void {
+    if (!this.source || !this.target) this.place(0, false);
+    const src = this.source!;
+    const tgt = this.target!;
+    this.continueLabel = null;
+    this.trail.length = 0;
+    this.rings.length = 0;
+
+    if (kind === "idle") {
+      this.poseOverride = "aim";
+      this.showHint = true;
+      this.dragging = false;
+      this.dragPt = null;
+      this.aim = { x: 0, y: 0, pull: 0 };
+      this.ball.x = src.x;
+      this.ball.y = src.y - 1;
+      this.ball.vx = 0;
+      this.ball.vy = 0;
+      this.drawFrame(performance.now());
+      return;
     }
-    if (tr.nextObstacles.length && tr.arrive) {
-      const fade = (tr.arrive.a ?? 1) * 0.85;
-      drawObstacles(g, tr.nextObstacles, fade, timeMs);
+
+    if (kind === "aim") {
+      this.poseOverride = "aim";
+      this.showHint = false;
+      this.dragging = true;
+      this.aimOrigin = { x: src.x, y: src.y - 1 };
+      this.dragPt = { x: src.x - 40, y: src.y + 110 };
+      this.aim = aimFrom(this.aimOrigin, this.dragPt, this.W, this.H);
+      this.ball.x = this.aimOrigin.x;
+      this.ball.y = this.aimOrigin.y;
+      this.ball.vx = 0;
+      this.ball.vy = 0;
+      this.drawFrame(performance.now());
+      return;
     }
-    if (tr.leave) {
-      const h = makeHoop(tr.leave.x, tr.leave.y, tr.leave.ang);
-      h.wobble = tr.leave.wobble;
-      drawHoop(g, h, GREY, { alpha: tr.leave.a ?? 1, timeMs, comboHeat });
-    }
-    if (tr.arrive) {
-      const h = makeHoop(tr.arrive.x, tr.arrive.y, tr.arrive.ang);
-      h.wobble = tr.arrive.wobble;
-      drawHoop(g, h, ORANGE, { alpha: tr.arrive.a ?? 1, timeMs, comboHeat });
-      if ((tr.arrive.a ?? 0) > 0.55) {
-        drawStarIcon(
-          g,
-          tr.arriveTo.x,
-          tr.arriveTo.y - 34,
-          12,
-          timeMs / 800,
-          tr.arrive.a ?? 1,
-        );
+
+    if (kind === "flight") {
+      this.poseOverride = "flying";
+      this.showHint = false;
+      this.dragging = false;
+      this.dragPt = null;
+      const midX = (src.x + tgt.x) / 2;
+      const midY = (src.y + tgt.y) / 2;
+      this.ball.x = midX;
+      this.ball.y = midY;
+      this.ball.vx = (tgt.x - src.x) * 2;
+      this.ball.vy = (tgt.y - src.y) * 2;
+      spawnLaunchRings(this.rings, midX, midY + 20);
+      for (let i = 0; i < 10; i++) {
+        this.trail.push({
+          x: midX - i * 8,
+          y: midY + i * 10,
+          life: 1 - i * 0.08,
+          rot: Math.atan2(this.ball.vy, this.ball.vx),
+        });
       }
+      this.drawFrame(performance.now());
+      return;
     }
-    if (tr.carry) {
-      const h = makeHoop(tr.carry.x, tr.carry.y, tr.carry.ang);
-      h.wobble = tr.carry.wobble;
-      const color = mixRimCss(tr.carry.colorT ?? 0);
-      drawHoop(g, h, color, {
-        withBall: true,
-        ballX: this.ball.x,
-        ballY: this.ball.y,
-        timeMs,
-        comboHeat,
-      });
-    }
+
+    this.poseOverride = "scored";
+    this.showHint = false;
+    this.dragging = false;
+    this.dragPt = null;
+    this.ball.x = tgt.x;
+    this.ball.y = tgt.y - 1;
+    this.ball.vx = 0;
+    this.ball.vy = 0;
+    tgt.wobble = 1.2;
+    this.scoreState = {
+      ...this.scoreState,
+      score: Math.max(1, this.scoreState.score),
+    };
+    this.drawFrame(performance.now());
   }
 }

@@ -12,3 +12,25 @@ export interface LaunchRing {
   ry: number;
   a: number;
 }
+
+export type VisualMode =
+  | "aim"
+  | "flying"
+  | "scored"
+  | "continue"
+  | "transition"
+  | "boot"
+  | "ended";
+
+export interface PitchHoop {
+  x: number;
+  y: number;
+  ang: number;
+  wobble?: number;
+}
+
+export interface PitchPull {
+  lx: number;
+  ly: number;
+  amt: number;
+}
