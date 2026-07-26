@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Trick Shot — Orchestrator Gameplay Prompt Pack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8e9ec;
+      --ink: #1a1c22;
+      --soft: #4a4e5a;
+      --muted: #7a7f8c;
+      --rim: #ff5a1f;
+      --ball: #2b6cff;
+      --card: #f4f5f7;
+      --line: rgba(26,28,34,.12);
+      --ok: #1f8a4c;
+      --panel: #12141a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 50% 35% at 10% 0%, rgba(255,90,31,.14), transparent 50%),
+        radial-gradient(ellipse 45% 30% at 90% 0%, rgba(43,108,255,.12), transparent 45%),
+        linear-gradient(180deg, var(--bg), #d5d7dc);
+      min-height: 100vh;
+      line-height: 1.45;
+    }
+    .shell { max-width: 980px; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
+    .nav {
+      display: flex; flex-wrap: wrap; gap: .5rem 1rem;
+      font-size: .78rem; font-weight: 600; margin-bottom: 1.1rem;
+    }
+    .nav a { color: var(--soft); text-decoration: none; }
+    .nav a:hover { color: var(--rim); }
+    .eyebrow {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: .68rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--rim); margin-bottom: .35rem;
+    }
+    h1 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: clamp(2.4rem, 8vw, 3.8rem);
+      line-height: .95; letter-spacing: .03em; margin-bottom: .5rem;
+    }
+    h1 span { color: var(--ball); }
+    .lead { color: var(--soft); max-width: 40rem; margin-bottom: 1rem; font-size: .95rem; }
+    .banner {
+      background: #1a1c22; color: #e8ebf2; border-radius: 14px;
+      padding: 1rem 1.1rem; margin-bottom: 1.25rem;
+    }
+    .banner strong { color: var(--rim); }
+    .banner ul { margin: .5rem 0 0 1.1rem; font-size: .84rem; color: #b4bccf; }
+    .banner li { margin-bottom: .3rem; }
+    h2 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 1.55rem; letter-spacing: .04em; margin: 1.5rem 0 .65rem;
+    }
+    .map {
+      display: grid; gap: .5rem; margin-bottom: 1.25rem;
+    }
+    .map-row {
+      display: grid; grid-template-columns: 7.5rem 1fr auto;
+      gap: .65rem; align-items: center;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 10px; padding: .65rem .8rem; font-size: .82rem;
+    }
+    @media (max-width: 640px) {
+      .map-row { grid-template-columns: 1fr; gap: .25rem; }
+    }
+    .map-row .role {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: .68rem; font-weight: 600; color: var(--ball);
+      letter-spacing: .04em; text-transform: uppercase;
+    }
+    .map-row .issues { color: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: .72rem; }
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 14px; padding: 1rem 1.05rem; margin-bottom: .85rem;
+    }
+    .card.orch { border-color: rgba(255,90,31,.45); box-shadow: 0 0 0 1px rgba(255,90,31,.12); }
+    .card-head {
+      display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline;
+      justify-content: space-between; margin-bottom: .55rem;
+    }
+    .card-head h3 { font-size: 1.05rem; font-weight: 700; }
+    .tag {
+      font-family: "IBM Plex Mono", monospace; font-size: .65rem;
+      padding: .15rem .45rem; border-radius: 999px; background: #e0e2e8; color: var(--soft);
+    }
+    .tag.orch { background: rgba(255,90,31,.15); color: var(--rim); }
+    .tag.sub { background: rgba(43,108,255,.12); color: var(--ball); }
+    .card p { font-size: .84rem; color: var(--soft); margin-bottom: .55rem; }
+    .card ul { margin: 0 0 .7rem 1.1rem; font-size: .82rem; color: var(--soft); }
+    .card li { margin-bottom: .25rem; }
+    pre.prompt {
+      display: none;
+      white-space: pre-wrap; word-break: break-word;
+      font-family: "IBM Plex Mono", monospace; font-size: .68rem; line-height: 1.5;
+      background: var(--panel); color: #c5cad8;
+      border-radius: 10px; padding: .85rem; margin: .5rem 0 .65rem;
+      max-height: 220px; overflow: auto;
+    }
+    pre.prompt.open { display: block; }
+    .btns { display: flex; flex-wrap: wrap; gap: .45rem; }
+    button {
+      font-family: inherit; font-weight: 700; font-size: .8rem;
+      border: none; border-radius: 9px; padding: .55rem .9rem; cursor: pointer;
+    }
+    .btn-primary { background: var(--rim); color: #fff; box-shadow: 0 3px 0 #b33a0a; }
+    .btn-soft { background: var(--ball); color: #fff; box-shadow: 0 3px 0 #1a1c22; }
+    .btn-ghost { background: transparent; border: 2px solid var(--ink); color: var(--ink); }
+    .toast {
+      position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%);
+      background: #1a1c22; color: #7dffa3; font-family: "IBM Plex Mono", monospace;
+      font-size: .75rem; padding: .55rem .9rem; border-radius: 999px;
+      opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20;
+    }
+    .toast.show { opacity: 1; }
+    .sticky-copy {
+      position: sticky; bottom: .75rem; z-index: 10;
+      display: flex; gap: .5rem; flex-wrap: wrap;
+      background: rgba(244,245,247,.92); backdrop-filter: blur(8px);
+      border: 1px solid var(--line); border-radius: 12px;
+      padding: .65rem .75rem; margin-top: 1.25rem;
+    }
+    .sticky-copy span { flex: 1; font-size: .78rem; color: var(--soft); align-self: center; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a href="../index.html">Home</a>
+      <a href="STACK_LOCK.md">Stack lock</a>
+      <a href="animation-pitch.html">Pitch (reuse)</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="../apps/web/">apps/web</a>
+    </nav>
+
+    <p class="eyebrow">Multi-agent · Mobile-first · Greenfield OK</p>
+    <h1>GAMEPLAY <span>ORCHESTRATOR</span> PACK</h1>
+    <p class="lead">
+      Main agent coordinates. Sub-agents own one slice each. Reuse the pitch as the
+      <strong>feel + rules source of truth</strong>. Greenfield rewrite of
+      <code>apps/web</code> gameplay is allowed — scratch bad code, keep the physics ideas.
+    </p>
+
+    <div class="banner">
+      <strong>Hard constraints (every agent)</strong>
+      <ul>
+        <li><strong>Mobile-first</strong> — portrait PWA; touch-action none; safe-area; drag never stolen by browser scroll</li>
+        <li><strong>Reuse pitch</strong> — <code>docs/animation-pitch.html</code> + <code>assets/references/</code> for feel, layout, net-drag, walls, one obstacle, seamless handoff</li>
+        <li><strong>Greenfield OK</strong> — delete/replace <code>PlayScene</code> / modules if cleaner; do not polish junk into “done”</li>
+        <li><strong>Stack lock</strong> — <code>client=phaser_pwa</code>, <code>physics=custom_2d</code>, <code>platforms=pwa_first</code></li>
+        <li><strong>Pixel bar</strong> — side-by-side vs references for rim, net, ball, trail, HUD</li>
+        <li><strong>PRs close issues</strong> — one PR per issue (or tightly related pair); <code>Closes #N</code> in body</li>
+      </ul>
+    </div>
+
+    <h2>Issue → agent → PR map</h2>
+    <div class="map">
+      <div class="map-row">
+        <span class="role">Orchestrator</span>
+        <span>Plan, sequence, merge conflicts, fidelity gate</span>
+        <span class="issues">all gameplay</span>
+      </div>
+      <div class="map-row">
+        <span class="role">Sub A · Visual</span>
+        <span>Pixel net/rim/ball/trail/HUD from pitch + refs</span>
+        <span class="issues">visual slice</span>
+      </div>
+      <div class="map-row">
+        <span class="role">Sub B · Physics</span>
+        <span>Integrator, walls, aim preview, hoop, obstacles</span>
+        <span class="issues">#16–#19</span>
+      </div>
+      <div class="map-row">
+        <span class="role">Sub C · Logic</span>
+        <span>State machine, zigzag spawn, scoring rules, modes, RNG</span>
+        <span class="issues">#20–#24</span>
+      </div>
+      <div class="map-row">
+        <span class="role">Sub D · Meta</span>
+        <span>Combo juice, continue stub, daily, local leaderboard</span>
+        <span class="issues">#4</span>
+      </div>
+      <div class="map-row">
+        <span class="role">Sub E · PWA</span>
+        <span>Manifest, icons, SW, MiniPay shell</span>
+        <span class="issues">#5</span>
+      </div>
+    </div>
+
+    <!-- ORCHESTRATOR -->
+    <article class="card orch" data-id="orch">
+      <div class="card-head">
+        <h3>Main orchestrator</h3>
+        <span class="tag orch">COPY FIRST</span>
+      </div>
+      <p>Run this agent first. It does not implement every pixel — it spawns / sequences sub-agents and opens PRs.</p>
+      <ul>
+        <li>Read pitch + STACK_LOCK + open issues labeled <code>gameplay</code> / <code>physics</code> / <code>logic</code></li>
+        <li>Greenfield: may wipe <code>apps/web/src/scenes/PlayScene.ts</code> and rewrite modules under <code>apps/web/src/</code></li>
+        <li>Extract reusable pitch rules into packages (physics/logic) before UI polish</li>
+        <li>Gate merge on mobile drag + side-by-side visual check</li>
+      </ul>
+      <pre class="prompt open" id="p-orch"></pre>
+      <div class="btns">
+        <button type="button" class="btn-primary" data-copy="p-orch">Copy orchestrator prompt</button>
+        <button type="button" class="btn-ghost" data-toggle="p-orch">Hide / show</button>
+      </div>
+    </article>
+
+    <!-- SUB A -->
+    <article class="card" data-id="a">
+      <div class="card-head">
+        <h3>Sub-agent A — Pixel visual / render</h3>
+        <span class="tag sub">VISUAL</span>
+      </div>
+      <p>Owns draw code only. Reuse pitch draw language (woven net, marble ball, cyan diamonds). Mobile canvas scale / DPR.</p>
+      <pre class="prompt" id="p-a"></pre>
+      <div class="btns">
+        <button type="button" class="btn-soft" data-copy="p-a">Copy Sub A</button>
+        <button type="button" class="btn-ghost" data-toggle="p-a">Show prompt</button>
+      </div>
+    </article>
+
+    <!-- SUB B -->
+    <article class="card" data-id="b">
+      <div class="card-head">
+        <h3>Sub-agent B — Physics package</h3>
+        <span class="tag sub">#16–#19</span>
+      </div>
+      <p>Shared fixed-timestep integrator; wall banks + preview parity; net-pull impulse; one live obstacle collider.</p>
+      <pre class="prompt" id="p-b"></pre>
+      <div class="btns">
+        <button type="button" class="btn-soft" data-copy="p-b">Copy Sub B</button>
+        <button type="button" class="btn-ghost" data-toggle="p-b">Show prompt</button>
+      </div>
+    </article>
+
+    <!-- SUB C -->
+    <article class="card" data-id="c">
+      <div class="card-head">
+        <h3>Sub-agent C — Run logic</h3>
+        <span class="tag sub">#20–#24</span>
+      </div>
+      <p>State machine, zigzag + seeded one-obstacle spawn, scoring/combo rules, mode matrix, input log schema.</p>
+      <pre class="prompt" id="p-c"></pre>
+      <div class="btns">
+        <button type="button" class="btn-soft" data-copy="p-c">Copy Sub C</button>
+        <button type="button" class="btn-ghost" data-toggle="p-c">Show prompt</button>
+      </div>
+    </article>
+
+    <!-- SUB D -->
+    <article class="card" data-id="d">
+      <div class="card-head">
+        <h3>Sub-agent D — Meta / juice (closes #4)</h3>
+        <span class="tag sub">Closes #4</span>
+      </div>
+      <p>Combo VFX, miss→continue stub (mode-aware), daily challenge seed, local leaderboard, <code>RunSummary</code>.</p>
+      <pre class="prompt" id="p-d"></pre>
+      <div class="btns">
+        <button type="button" class="btn-soft" data-copy="p-d">Copy Sub D</button>
+        <button type="button" class="btn-ghost" data-toggle="p-d">Show prompt</button>
+      </div>
+    </article>
+
+    <!-- SUB E -->
+    <article class="card" data-id="e">
+      <div class="card-head">
+        <h3>Sub-agent E — PWA shell (closes #5)</h3>
+        <span class="tag sub">Closes #5</span>
+      </div>
+      <p>Brand icons, manifest, SW strategy, safe-area, MiniPay checklist in README.</p>
+      <pre class="prompt" id="p-e"></pre>
+      <div class="btns">
+        <button type="button" class="btn-soft" data-copy="p-e">Copy Sub E</button>
+        <button type="button" class="btn-ghost" data-toggle="p-e">Show prompt</button>
+      </div>
+    </article>
+
+    <div class="sticky-copy">
+      <span>Tip: paste orchestrator first in a new chat, then spawn Subs A→E as parallel agents with their prompts.</span>
+      <button type="button" class="btn-primary" data-copy="p-orch">Copy orchestrator</button>
+    </div>
+  </div>
+  <div class="toast" id="toast">Copied</div>
+
+<script>
+(() => {
+  const toast = document.getElementById("toast");
+  const showToast = (msg) => {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 1600);
+  };
+
+  const SHARED = `
+## Repo
+- Root: Trick Shot monorepo (GitHub yinkscss/trickshot)
+- Stack lock: docs/STACK_LOCK.md (wins over PRD)
+- Pitch feel/rules: docs/animation-pitch.html
+- References: assets/references/*.png
+- Client: apps/web (Phaser 3 + Vite PWA)
+
+## Global rules
+- Mobile-first portrait PWA (touch-action: none, safe-area, no rubber-band steal)
+- Greenfield OK: delete/replace gameplay modules; do not polish broken abstractions
+- Reuse pitch: zigzag, net-drag (ball seated), wall banks + preview parity, one obstacle/shot, seamless dunk handoff
+- Physics authority = custom 2D integrator (NOT Phaser Arcade/Matter)
+- Surgical commits; open PR with Closes #N when done
+- No shop/wallet/tournaments in gameplay slices unless issue says so
+`.trim();
+
+  const prompts = {
+    orch: `# Orchestrator — Trick Shot pixel gameplay (mobile-first greenfield)
+
+You are the **main orchestrator**. Coordinate sub-agents; do not solo-implement every layer unless a sub-agent is unavailable.
+
+${SHARED}
+
+## Mission
+Ship pixel-faithful, mobile-first web gameplay by **reusing the pitch** as the source of truth for feel/rules, while allowing a **greenfield rewrite** of apps/web gameplay code.
+
+## Open issue map (delegate)
+| Sub-agent | Owns | Issues |
+|---|---|---|
+| A Visual | Render: net/rim/ball/trail/HUD | visual fidelity |
+| B Physics | Integrator + walls + aim + hoop + obstacles | #16 #17 #18 #19 |
+| C Logic | FSM, zigzag spawn, scoring, modes, RNG/input log | #20 #21 #22 #23 #24 |
+| D Meta | Combo juice, continue stub, daily, local board | **#4** |
+| E PWA | Manifest/icons/SW/MiniPay shell | **#5** |
+
+## Sequence
+1. Kick **B** + **C** first (shared packages / pure TS) with tests.
+2. Kick **A** against references once physics API is stable.
+3. Wire scene (greenfield PlayScene OK) integrating A+B+C.
+4. Kick **D** (Closes #4) and **E** (Closes #5) as separate PRs.
+5. Fidelity gate: mobile drag works; side-by-side vs assets/references for idle/aim/flight/score.
+
+## PR policy
+- One PR per issue (or B's physics issues as a stacked series).
+- Body must include \`Closes #N\`.
+- Reject PRs that re-center hoops, drag the ball instead of the net, or add multi-obstacle lanes.
+
+## Your first actions
+1. Inventory apps/web/src and pitch.
+2. Publish a short plan comment (order + branch names).
+3. Spawn or simulate Subs A–E with their prompts from docs/gameplay-prompt-pack.html.
+4. Merge only when mobile + visual gates pass.
+`,
+
+    a: `# Sub-agent A — Pixel visual / render
+
+${SHARED}
+
+## Scope
+Implement / rewrite drawing for Trick Shot gameplay to match assets/references + pitch:
+- Woven white net (not a flat cone); drag **stretches the net**
+- Grey source rim / orange target rim; marble blue ball
+- Cyan diamond fire trail + launch rings; orange aim dots
+- HUD: pause, stars, giant faint score
+- Mobile DPR / full-bleed portrait
+
+## Out of scope
+Physics math ownership (consume APIs from Sub B). Meta continue/daily UI (Sub D). PWA manifest (Sub E).
+
+## Done when
+Side-by-side screenshots (or explicit frame comparisons) for idle, aim+net stretch, mid-flight trail, scored — match references at a glance on a phone-width viewport.
+`,
+
+    b: `# Sub-agent B — Physics package (issues #16–#19)
+
+${SHARED}
+
+## Scope (open separate PRs or one stacked PR series)
+- **#16** Extract shared fixed-timestep 2D integrator (pure TS, tested)
+- **#17** Wall banks + aim-preview parity (identical restitution)
+- **#18** Obstacle colliders: wall peg + bumper (+ gate/spinner if already in pitch) — **exactly one live**
+- **#19** Net-pull → launch impulse + hoop through/rim detection
+
+## Source
+Port formulas/constants from docs/animation-pitch.html and existing apps/web/src/physics/* — greenfield reorganize OK.
+
+## Done when
+Unit tests for integrate/walls/aim parity; PlayScene (or temp harness) banks off edges the same as preview dots.
+Each PR body: Closes #16 / #17 / #18 / #19 as applicable.
+`,
+
+    c: `# Sub-agent C — Run logic (issues #20–#24)
+
+${SHARED}
+
+## Scope
+- **#20** Run state machine: aim → fly → score/miss → transition/continue
+- **#21** Zigzag layout + obstacle spawn (seeded, one per shot)
+- **#22** Scoring, combo multipliers, star economy rules
+- **#23** Input log schema + seeded RNG for hybrid replay
+- **#24** Mode rules matrix (casual / daily / tournament) — tournament: no continues, no powerups per STACK_LOCK
+
+## Done when
+Pure logic modules with tests; scene only calls into them. PRs close #20–#24.
+`,
+
+    d: `# Sub-agent D — Meta / juice — Closes #4
+
+${SHARED}
+
+## GitHub issue
+https://github.com/yinkscss/trickshot/issues/4
+PR **must** include: Closes #4
+
+## Scope
+- Combo popups x2 / x3 / ON FIRE + shake/burst scaling with chain
+- Score + stars; miss → continue stub modal (Continue sandbox/disabled + End run)
+- Continue API mode-aware: tournament continues impossible (legal=no_continue_tourney)
+- Daily challenge: UTC date seed shared layout
+- Local leaderboard localStorage/IndexedDB top-N
+- Emit RunSummary from @trickshot/shared
+
+## Out of scope
+Paid cUSD continue, ads, global leaderboard, season pass
+
+## Mobile-first
+Continue modal usable with thumbs; no desktop-only hover.
+
+## Done when
+Issue #4 acceptance criteria all checked; PR merged path ready.
+`,
+
+    e: `# Sub-agent E — PWA shell — Closes #5
+
+${SHARED}
+
+## GitHub issue
+https://github.com/yinkscss/trickshot/issues/5
+PR **must** include: Closes #5
+
+## Scope
+- Brand 192/512 icons (not solid placeholders)
+- Manifest: portrait, theme colors (grey/orange/blue)
+- SW: precache shell + safe Phaser chunk updates (autoUpdate OK; document strategy)
+- Touch + safe-area; Scale.RESIZE must not break aim
+- apps/web/README.md MiniPay WebView smoke checklist
+- npm run build:web → valid manifest + SW
+
+## Out of scope
+Capacitor/stores, push, full offline daily seeds
+
+## Done when
+Issue #5 acceptance criteria checked; installable on Chromium Android.
+`,
+  };
+
+  Object.entries(prompts).forEach(([key, text]) => {
+    const el = document.getElementById("p-" + key);
+    if (el) el.textContent = text.trim() + "\n";
+  });
+
+  document.querySelectorAll("[data-copy]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-copy");
+      const pre = document.getElementById(id);
+      if (!pre) return;
+      pre.classList.add("open");
+      try {
+        await navigator.clipboard.writeText(pre.textContent || "");
+        showToast("Copied " + id.replace("p-", "prompt "));
+      } catch {
+        const r = document.createRange();
+        r.selectNodeContents(pre);
+        const s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+        showToast("Selected — Cmd/Ctrl+C");
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pre = document.getElementById(btn.getAttribute("data-toggle"));
+      if (pre) pre.classList.toggle("open");
+    });
+  });
+})();
+</script>
+</body>
+</html>
