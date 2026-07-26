@@ -1,6 +1,12 @@
 import Phaser from "phaser";
-import { RunFSM, allowsContinue, type PhysicsIntent } from "@trickshot/logic";
-import { layoutForSide, makeHoop } from "../game/layout";
+import {
+  RunFSM,
+  allowsContinue,
+  dailySeedFromUtcDate,
+  generateShotLayout,
+  type PhysicsIntent,
+} from "@trickshot/logic";
+import { makeHoop } from "../game/layout";
 import {
   beginDunkTransition,
   finishDunkTransition,
@@ -14,7 +20,6 @@ import {
   RIM_RX,
   RIM_RY,
   aimFrom,
-  buildObstacles,
   collideObstacles,
   hypot,
   netPullForHoop,
@@ -47,6 +52,10 @@ export class PlayScene extends Phaser.Scene {
   private continueText!: Phaser.GameObjects.Text;
 
   private readonly runFsm = new RunFSM("casual");
+  private readonly runSeed =
+    typeof globalThis.crypto?.randomUUID === "function"
+      ? globalThis.crypto.randomUUID()
+      : `casual-${Date.now()}`;
   private score = 0;
   private side = 1;
 
@@ -131,19 +140,29 @@ export class PlayScene extends Phaser.Scene {
     if (fromScore === 0) this.side = 1;
     else if (advanceSide) this.side *= -1;
 
-    const L = layoutForSide(this.side, fromScore, this.W, this.H);
-    this.source = makeHoop(L.sx, L.sy, L.sourceAng);
-    this.target = makeHoop(L.tx, L.ty, L.targetAng);
-    this.obstacles = buildObstacles(L.sx, L.sy, L.tx, L.ty, fromScore, this.W);
-    this.ball.x = L.sx;
-    this.ball.y = L.sy - 1;
+    const mode = this.runFsm.state.mode;
+    const seed =
+      mode === "daily" ? dailySeedFromUtcDate() : this.runSeed;
+    const L = generateShotLayout({
+      side: this.side as -1 | 1,
+      score: fromScore,
+      seed,
+      mode,
+      width: this.W,
+      height: this.H,
+    });
+    this.source = makeHoop(L.source.x, L.source.y, L.source.ang);
+    this.target = makeHoop(L.goal.x, L.goal.y, L.goal.ang);
+    this.obstacles = L.obstacles.map((o) => ({ ...o }));
+    this.ball.x = L.source.x;
+    this.ball.y = L.source.y - 1;
     this.ball.vx = 0;
     this.ball.vy = 0;
     this.aim = { x: 0, y: 0, pull: 0 };
     this.dragging = false;
     this.dragPt = null;
     this.transition = null;
-    this.aimOrigin = { x: L.sx, y: L.sy - 1 };
+    this.aimOrigin = { x: L.source.x, y: L.source.y - 1 };
     this.continueText.setVisible(false);
   }
 
@@ -329,6 +348,11 @@ export class PlayScene extends Phaser.Scene {
     const { side, transition } = beginDunkTransition({
       side: this.side,
       score: this.score,
+      seed:
+        this.runFsm.state.mode === "daily"
+          ? dailySeedFromUtcDate()
+          : this.runSeed,
+      mode: this.runFsm.state.mode,
       width: this.W,
       height: this.H,
       source: this.source,

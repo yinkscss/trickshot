@@ -1,18 +1,21 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { layoutForSide } from "../game/layout";
-import {
-  buildObstacles,
-  collideObstacles,
-  type Obstacle,
-} from "./obstacles";
+import { generateShotLayout, layoutForSide, nextSide, type Side } from "@trickshot/logic";
+import { collideObstacles, type Obstacle } from "./obstacles";
 
 const W = 390;
 const H = 780;
+const TEST_SEED = "web-parity-seed";
 
-function setupForScore(score: number, side = 1): Obstacle[] {
-  const L = layoutForSide(side, score, W, H);
-  return buildObstacles(L.sx, L.sy, L.tx, L.ty, score, W);
+function setupForScore(score: number, side: Side = 1): Obstacle[] {
+  return generateShotLayout({
+    side,
+    score,
+    seed: TEST_SEED,
+    mode: "casual",
+    width: W,
+    height: H,
+  }).obstacles;
 }
 
 describe("obstacle count invariant", () => {
@@ -22,7 +25,7 @@ describe("obstacle count invariant", () => {
 
   it("every post-tutorial shot has exactly one obstacle", () => {
     for (let score = 1; score <= 20; score++) {
-      const side = score % 2 === 0 ? -1 : 1;
+      const side = (score % 2 === 0 ? -1 : 1) as Side;
       const obstacles = setupForScore(score, side);
       assert.equal(
         obstacles.length,
@@ -40,9 +43,16 @@ describe("obstacle count invariant", () => {
   });
 
   it("never stacks extras even if called repeatedly", () => {
-    const L = layoutForSide(1, 5, W, H);
-    const a = buildObstacles(L.sx, L.sy, L.tx, L.ty, 5, W);
-    const b = buildObstacles(L.sx, L.sy, L.tx, L.ty, 5, W);
+    const input = {
+      side: 1 as Side,
+      score: 5,
+      seed: TEST_SEED,
+      mode: "casual" as const,
+      width: W,
+      height: H,
+    };
+    const a = generateShotLayout(input).obstacles;
+    const b = generateShotLayout(input).obstacles;
     assert.equal(a.length, 1);
     assert.equal(b.length, 1);
     assert.deepEqual(a, b);
@@ -51,18 +61,18 @@ describe("obstacle count invariant", () => {
 
 describe("zigzag side alternation", () => {
   it("10 dunks alternate source side left/right", () => {
-    let side = 1;
-    const sides: number[] = [];
+    let side: Side = 1;
+    const sides: Side[] = [];
     for (let dunk = 0; dunk < 10; dunk++) {
       sides.push(side);
       const L = layoutForSide(side, dunk === 0 ? 0 : dunk, W, H);
-      const sourceOnLeft = L.sx < L.tx;
+      const sourceOnLeft = L.source.x < L.goal.x;
       assert.equal(sourceOnLeft, side === 1);
-      assert.ok(L.sy > L.ty, "source must sit below goal (climb)");
-      side *= -1;
+      assert.ok(L.source.y > L.goal.y, "source must sit below goal (climb)");
+      side = nextSide(side);
     }
     for (let i = 1; i < sides.length; i++) {
-      assert.equal(sides[i], -sides[i - 1]);
+      assert.equal(sides[i], nextSide(sides[i - 1]!));
     }
   });
 });
@@ -70,7 +80,6 @@ describe("zigzag side alternation", () => {
 describe("collideObstacles", () => {
   it("wall peg reflects via segment bounce", () => {
     const wall: Obstacle = { type: "wall", x: 200, y: 300, h: 90, w: 7 };
-    // Offset into the peg so collision resolves (exact center has zero normal)
     const ball = { x: 202, y: 300, vx: -400, vy: 0 };
     collideObstacles([wall], ball, 1 / 60);
     assert.ok(ball.x > 202, "ball pushed off the peg");
