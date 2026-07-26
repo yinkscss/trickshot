@@ -48,6 +48,10 @@ export interface PitchDrawState {
   rings: LaunchRing[];
   showHint: boolean;
   comboChip: string | null;
+  /** Center-screen combo popup (pitch `drawComboFX`). */
+  comboFx: { label: string; sub: string; life: number } | null;
+  /** Screen shake magnitude in logical px (decays each frame). */
+  shake: number;
   continueLabel: string | null;
   transition: {
     leave: (PitchHoop & { a?: number }) | null;
@@ -567,6 +571,51 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: PitchDrawState): void {
   }
 }
 
+function drawComboFX(
+  ctx: CanvasRenderingContext2D,
+  state: PitchDrawState,
+): void {
+  const c = state.comboFx;
+  if (!c) return;
+  const life = c.life;
+  if (life >= 1) return;
+
+  const ease =
+    life < 0.2
+      ? (life / 0.2) * 1.15
+      : life < 0.5
+        ? 1.15 - (life - 0.2) * 0.5
+        : Math.max(0, 1 - (life - 0.5) / 0.5);
+
+  ctx.save();
+  ctx.translate(state.W / 2, state.H * 0.42);
+  ctx.scale(ease, ease);
+  ctx.globalAlpha = Math.min(1, ease);
+
+  ctx.beginPath();
+  ctx.arc(0, 0, 40 + life * 50, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(255,77,26,${0.55 * (1 - life)})`;
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  ctx.font = "900 42px Nunito, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = ORANGE;
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 6;
+  ctx.strokeText(c.label, 0, -6);
+  ctx.fillText(c.label, 0, -6);
+
+  if (c.sub) {
+    ctx.font = "800 16px Nunito, sans-serif";
+    ctx.fillStyle = GREY;
+    ctx.lineWidth = 0;
+    ctx.fillText(c.sub, 0, 24);
+  }
+  ctx.restore();
+}
+
 function drawContinue(
   ctx: CanvasRenderingContext2D,
   state: PitchDrawState,
@@ -612,7 +661,10 @@ export function drawPitchFrame(
   state: PitchDrawState,
 ): void {
   const { W, H } = state;
+  const sx = (Math.random() - 0.5) * state.shake;
+  const sy = (Math.random() - 0.5) * state.shake;
   ctx.save();
+  ctx.translate(sx, sy);
   drawCourtRails(ctx, W, H);
   drawHUD(ctx, state);
 
@@ -701,6 +753,7 @@ export function drawPitchFrame(
   }
 
   drawHint(ctx, state);
+  drawComboFX(ctx, state);
   drawContinue(ctx, state);
   ctx.restore();
 }

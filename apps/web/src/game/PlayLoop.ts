@@ -1,6 +1,7 @@
 import {
   RunFSM,
   allowsContinue,
+  buildRunSummary,
   comboLabel,
   createInputLogRecorder,
   createScoreState,
@@ -8,11 +9,13 @@ import {
   generateShotLayout,
   reduceScoreEvent,
   shotRng,
+  type InputLogRecorder,
   type PhysicsIntent,
   type ScoreState,
   type Side,
 } from "@trickshot/logic";
 import { PHYSICS_BUILD_ID } from "@trickshot/physics";
+import type { GameMode } from "@trickshot/shared";
 import { makeHoop } from "./layout";
 import {
   beginDunkTransition,
@@ -39,6 +42,14 @@ import {
   type Vec2,
 } from "../physics";
 import {
+  recordLocalScore,
+  emitRunSummary,
+  comboSubtext,
+  shakeIntensity,
+  tournamentRunId,
+} from "../meta";
+import { MetaHud } from "../ui/metaHud";
+import {
   DirectCanvasRenderer,
   clientToCourt,
   safeTopInset,
@@ -50,31 +61,43 @@ import {
   type VisualMode,
 } from "../render";
 
+interface ComboFx {
+  label: string;
+  sub: string;
+  t: number;
+  dur: number;
+}
+
 /**
- * Pitch-parity core loop: zigzag climb, one obstacle per shot,
- * seamless dunk→next-loop handoff. Canvas2D + rAF (no Phaser).
+ * Pitch-parity core loop + Alpha meta: combo juice, continue stub,
+ * daily seed, local leaderboard, RunSummary. Canvas2D + rAF (no Phaser).
  */
 export class PlayLoop {
   private readonly pitch: DirectCanvasRenderer;
   private readonly canvas: HTMLCanvasElement;
+  private readonly hud: MetaHud;
 
   private readonly trail: TrailParticle[] = [];
   private readonly rings: LaunchRing[] = [];
 
-  private readonly runSeed =
+  private runSeed =
     typeof globalThis.crypto?.randomUUID === "function"
       ? globalThis.crypto.randomUUID()
       : `casual-${Date.now()}`;
-  private readonly inputLog = createInputLogRecorder({
+  private inputLog: InputLogRecorder = createInputLogRecorder({
     seed: this.runSeed,
     mode: "casual",
     physicsBuildId: PHYSICS_BUILD_ID,
   });
-  private readonly runFsm = new RunFSM("casual");
+  private runFsm = new RunFSM("casual");
   private score = 0;
   private side = 1;
   private scoreState: ScoreState = createScoreState();
   private starPos: Vec2 | null = null;
+  private tournamentId: string | null = null;
+  private inMenu = true;
+  private comboFx: ComboFx | null = null;
+  private shake = 0;
 
   private source: Hoop | null = null;
   private target: Hoop | null = null;
@@ -117,16 +140,23 @@ export class PlayLoop {
     this.handleUp(e.clientX, e.clientY, e.timeStamp);
   };
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, hudParent: HTMLElement) {
     this.canvas = canvas;
     this.pitch = new DirectCanvasRenderer(canvas);
+    this.hud = new MetaHud(hudParent, {
+      onSelectMode: (mode) => this.startMode(mode),
+      onContinueStub: () => this.applyContinueStub(),
+      onEndRun: () => this.declineContinue(),
+      onDismissSummary: () => this.backToMenu(),
+      onPlayAgain: () => this.backToMenu(),
+    });
   }
 
   start(): void {
     if (this.running) return;
     this.running = true;
     this.syncSize();
-    this.applyRunResult(this.runFsm.dispatch({ type: "bootComplete" }));
+    this.hud.showModePicker();
 
     this.canvas.addEventListener("pointerdown", this.onPointerDown);
     this.canvas.addEventListener("pointermove", this.onPointerMove);
@@ -164,6 +194,7 @@ export class PlayLoop {
     this.canvas.removeEventListener("pointerup", this.onPointerUp);
     this.canvas.removeEventListener("pointercancel", this.onPointerUp);
     this.canvas.removeEventListener("lostpointercapture", this.onPointerUp);
+    this.hud.destroy();
   }
 
   resize(): void {
@@ -187,9 +218,86 @@ export class PlayLoop {
     return clientToCourt(this.canvas, clientX, clientY, this.W, this.H);
   }
 
+  private startMode(mode: GameMode): void {
+    this.inMenu = false;
+    this.runSeed =
+      typeof globalThis.crypto?.randomUUID === "function"
+        ? globalThis.crypto.randomUUID()
+        : `${mode}-${Date.now()}`;
+    this.tournamentId = mode === "tournament" ? tournamentRunId() : null;
+
+    this.runFsm = new RunFSM(mode);
+    this.inputLog = createInputLogRecorder({
+      seed: this.currentSeed(),
+      mode,
+      physicsBuildId: PHYSICS_BUILD_ID,
+    });
+    this.scoreState = createScoreState();
+    this.score = 0;
+    this.side = 1;
+    this.showHint = true;
+    this.comboFx = null;
+    this.shake = 0;
+    this.continueLabel = null;
+
+    this.hud.setModeLabel(mode);
+    this.hud.setStars(0);
+    this.hud.hideModePicker();
+    this.hud.hideContinue();
+    this.hud.hideSummary();
+
+    this.applyRunResult(this.runFsm.dispatch({ type: "bootComplete" }));
+  }
+
+  private backToMenu(): void {
+    this.inMenu = true;
+    this.dragging = false;
+    this.dragPt = null;
+    this.source = null;
+    this.target = null;
+    this.obstacles = [];
+    this.transition = null;
+    this.comboFx = null;
+    this.shake = 0;
+    this.continueLabel = null;
+    this.hud.hideContinue();
+    this.hud.hideSummary();
+    this.hud.showModePicker();
+  }
+
+  private finishRun(): void {
+    const mode = this.runFsm.state.mode;
+    const summary = buildRunSummary({
+      mode,
+      scoreState: this.scoreState,
+      continuesUsed: this.runFsm.state.continuesUsed,
+      seed: this.currentSeed(),
+      inputLog: this.inputLog.finalize(),
+    });
+
+    const board =
+      mode === "casual" || mode === "daily"
+        ? recordLocalScore({
+            score: summary.score,
+            stars: summary.stars,
+            chainLength: summary.chainLength,
+            mode,
+            seed: summary.seed,
+            at: new Date().toISOString(),
+          })
+        : [];
+
+    emitRunSummary(summary);
+    this.hud.showSummary(summary, board);
+    this.inMenu = true;
+  }
+
   /** Mode-matrix seed resolution (`per_run` / `utc_daily` / `tournament_id`). */
   private currentSeed(): string {
-    return resolveRunSeed(this.runFsm.state.mode, { runSeed: this.runSeed });
+    return resolveRunSeed(this.runFsm.state.mode, {
+      runSeed: this.runSeed,
+      tournamentId: this.tournamentId ?? undefined,
+    });
   }
 
   /** Hard snap (boot / continue / resize). Dunks use seamless transition. */
@@ -284,17 +392,26 @@ export class PlayLoop {
           this.place(intent.score, intent.advanceSide);
           break;
         case "showContinuePrompt":
-          this.continueLabel = "TAP TO RETRY";
+          this.continueLabel = "MISS";
+          this.hud.showContinue({
+            mode: this.runFsm.state.mode,
+            score: this.scoreState.score,
+            stars: this.scoreState.stars,
+            chainLength: this.scoreState.chainLength,
+          });
           break;
         case "hideContinuePrompt":
           this.continueLabel = null;
+          this.hud.hideContinue();
           break;
         case "runEnded":
           this.continueLabel = "RUN OVER";
+          this.finishRun();
           break;
       }
     }
     this.score = this.runFsm.state.score;
+    this.hud.setStars(this.scoreState.stars);
   }
 
   private tryCollectStar(): void {
@@ -304,6 +421,7 @@ export class PlayLoop {
         type: "collectStar",
       });
       this.starPos = null;
+      this.hud.setStars(this.scoreState.stars);
     }
   }
 
@@ -314,6 +432,7 @@ export class PlayLoop {
     this.dragPt = null;
     this.trail.length = 0;
     this.rings.length = 0;
+    this.comboFx = null;
     this.applyRunResult(this.runFsm.dispatch({ type: "outOfBounds" }));
     if (allowsContinue(this.runFsm.state.mode)) {
       this.applyRunResult(this.runFsm.dispatch({ type: "offerContinue" }));
@@ -322,21 +441,27 @@ export class PlayLoop {
     }
   }
 
-  private resetRun(): void {
+  private applyContinueStub(): void {
+    if (this.runFsm.runState !== "continue") return;
+    if (!allowsContinue(this.runFsm.state.mode)) return;
     this.inputLog.record({ type: "continue_accept" }, performance.now());
     this.showHint = true;
-    this.continueLabel = "TAP TO RETRY";
     this.scoreState = reduceScoreEvent(this.scoreState, {
       type: "acceptContinue",
     });
+    this.hud.hideContinue();
     this.applyRunResult(this.runFsm.dispatch({ type: "acceptContinue" }));
   }
 
+  private declineContinue(): void {
+    if (this.runFsm.runState !== "continue") return;
+    this.inputLog.record({ type: "continue_decline" }, performance.now());
+    this.hud.hideContinue();
+    this.applyRunResult(this.runFsm.dispatch({ type: "declineContinue" }));
+  }
+
   private handleDown(clientX: number, clientY: number, time: number): void {
-    if (this.runFsm.runState === "continue") {
-      this.resetRun();
-      return;
-    }
+    if (this.inMenu) return;
     if (this.runFsm.runState !== "aiming" || !this.source) return;
     const p = this.pointerCourt(clientX, clientY);
     if (hypot(p.x - this.source.x, p.y - this.source.y) > 160) return;
@@ -395,6 +520,19 @@ export class PlayLoop {
     this.dragPt = null;
   }
 
+  private updateComboFx(dt: number): void {
+    if (this.comboFx) {
+      this.comboFx.t += dt;
+      if (this.comboFx.t >= this.comboFx.dur) {
+        this.comboFx = null;
+      }
+    }
+    if (this.shake > 0) {
+      this.shake *= Math.pow(0.008, dt);
+      if (this.shake < 0.05) this.shake = 0;
+    }
+  }
+
   private update(time: number, delta: number): void {
     if (this.poseOverride) {
       this.drawFrame(time);
@@ -402,6 +540,13 @@ export class PlayLoop {
     }
 
     const dt = Math.min(delta / 1000, 0.033);
+    this.updateComboFx(dt);
+
+    if (this.inMenu) {
+      this.drawFrame(time);
+      return;
+    }
+
     const flying = this.runFsm.runState === "flying";
 
     updateTrailEffects(
@@ -468,6 +613,22 @@ export class PlayLoop {
     this.drawFrame(time);
   }
 
+  private triggerComboPopup(chainLength: number): void {
+    const label = comboLabel(chainLength);
+    if (!label) return;
+    this.comboFx = {
+      label,
+      sub: comboSubtext(chainLength),
+      t: 0,
+      dur: chainLength >= 3 ? 0.85 : 0.65,
+    };
+    this.shake = shakeIntensity(chainLength);
+    if (this.target) {
+      spawnLaunchRings(this.rings, this.target.x, this.target.y);
+      spawnLaunchRings(this.rings, this.target.x, this.target.y - 8);
+    }
+  }
+
   private onScore(time: number): void {
     if (
       this.runFsm.state.scoredAtMs !== null ||
@@ -479,6 +640,8 @@ export class PlayLoop {
     this.applyRunResult(this.runFsm.dispatch({ type: "throughHoop" }, time));
     this.inputLog.record({ type: "through_hoop" }, time);
     this.scoreState = reduceScoreEvent(this.scoreState, { type: "dunk" });
+    this.triggerComboPopup(this.scoreState.chainLength);
+    this.hud.setStars(this.scoreState.stars);
     this.trail.length = 0;
     this.rings.length = 0;
   }
@@ -522,6 +685,7 @@ export class PlayLoop {
 
   private visualMode(): VisualMode {
     if (this.poseOverride) return this.poseOverride;
+    if (this.inMenu) return "boot";
     switch (this.runFsm.runState) {
       case "aiming":
         return "aim";
@@ -587,6 +751,14 @@ export class PlayLoop {
       };
     }
 
+    const comboFxDraw = this.comboFx
+      ? {
+          label: this.comboFx.label,
+          sub: this.comboFx.sub,
+          life: this.comboFx.t / this.comboFx.dur,
+        }
+      : null;
+
     return {
       W: this.W,
       H: this.H,
@@ -613,6 +785,8 @@ export class PlayLoop {
       rings: this.rings,
       showHint: this.showHint,
       comboChip: chip,
+      comboFx: comboFxDraw,
+      shake: this.shake,
       continueLabel:
         mode === "continue" || mode === "ended" ? this.continueLabel : null,
       transition,
