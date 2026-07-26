@@ -54,11 +54,17 @@ export {
 export {
   applySlowDrop,
   applyWideHoop,
+  assertPowerupAllowed,
   powerupsAllowed,
   type DropConstants,
   type HoopLayout,
   type PowerupModifiers,
 } from "./powerups.js";
+
+export {
+  resolveRunSeed,
+  type RunSeedContext,
+} from "./run-seed.js";
 
 export {
   buildRunSummary,

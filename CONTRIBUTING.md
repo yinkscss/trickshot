@@ -25,6 +25,8 @@ Do not change stack IDs without an explicit lock review (update `STACK_LOCK.md` 
 | `anticheat=hybrid` | Client play + server replay |
 | `legal=no_continue_tourney` | No continues in paid tournaments |
 
+**Mode policy API:** [`packages/shared/README.md`](packages/shared/README.md) — `getModeRules(mode)` is the single source for continues, powerups, seeds, and leaderboard scope. Do not scatter ad-hoc `mode === "tournament"` checks.
+
 ## Out-of-scope stack swaps
 
 - Unity (or other native) as the primary client

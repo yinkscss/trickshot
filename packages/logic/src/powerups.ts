@@ -1,7 +1,4 @@
-import {
-  TOURNAMENT_ALLOWS_POWERUPS,
-  type GameMode,
-} from "@trickshot/shared";
+import { assertCanUsePowerup, getModeRules, type GameMode } from "@trickshot/shared";
 
 /** Inventory-granted modifiers (stubs — no-op until #9 wires inventory). */
 export interface PowerupModifiers {
@@ -23,8 +20,12 @@ const WIDE_HOOP_SCALE = 1.12;
 const SLOW_DROP_SCALE = 0.85;
 
 export function powerupsAllowed(mode: GameMode): boolean {
-  if (mode === "tournament") return TOURNAMENT_ALLOWS_POWERUPS;
-  return true;
+  return getModeRules(mode).allowsPowerups;
+}
+
+/** Shop confirm path — throws `ModePolicyError` when tournament forbids SKU. */
+export function assertPowerupAllowed(mode: GameMode, sku: string): void {
+  assertCanUsePowerup(mode, sku);
 }
 
 /** Wide hoop — tournament hard-disabled even when inventory grants it. */
