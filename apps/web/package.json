@@ -11,6 +11,7 @@
     "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@trickshot/logic": "*",
     "@trickshot/physics": "*",
     "@trickshot/shared": "*",
     "phaser": "^3.90.0"
