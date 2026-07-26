@@ -12,12 +12,33 @@ Extracted from `apps/web/src/physics` (issue #16) so the web client and future s
 
 Constants (`G`, `WALL_REST`, `MAX_POW`, etc.) match `docs/animation-pitch.html` until a deliberate tuning PR.
 
+## Coordinate space
+
+All positions and velocities are **world pixels** — the same space Phaser uses after `Scale.RESIZE`:
+
+- `worldWidth` / `worldHeight` = `scale.width` / `scale.height` from the active scene (not normalized 0–1).
+- Wall collision uses `edgePad()` = `BALL_RADIUS + 3` px inset from each screen edge.
+- Aim preview (`predictPath`) and flight (`stepProjectile` / `stepProjectileSubsteps`) share this space; no camera-scroll offset is applied in Alpha (zigzag is layout-only).
+
+## Float compare epsilons
+
+| Constant | Value | Use |
+|----------|-------|-----|
+| `FLIGHT_EPSILON` | `1e-9` | Preview dot vs fixed `PREVIEW_DT` flight |
+| `SUBSTEP_EPSILON` | `1e-6` | Variable `frameDt` flight via `stepProjectileSubsteps` |
+
+## Wall banks
+
+- **`applyWallBounce`** / **`collideScreenEdges`** — single authority for L/R screen edges (`WALL_REST = 0.9`).
+- Optional `onHit(side, x, y)` callback for flight FX; **preview omits the hook**.
+- Flight in the web client should use **`stepProjectileSubsteps`** so variable frame times match the fixed preview integrator.
+
 ## Exports
 
 | Module | Role |
 |--------|------|
 | `integrate` | `stepProjectile`, `stepProjectileSubsteps`, `cloneProjectile` |
-| `walls` | `applyWallBounce`, `edgePad` |
+| `walls` | `applyWallBounce`, `collideScreenEdges`, `edgePad` |
 | `aim` | `aimFrom`, `netPullForHoop`, `predictPath` |
 | `constants` | `G`, `FIXED_DT`, `BALL_RADIUS`, … |
 | `types` | `Projectile`, `Vec2`, `Hoop`, … |

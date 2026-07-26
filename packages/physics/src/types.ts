@@ -35,3 +35,14 @@ export interface PredictDot {
   bounced: boolean;
   fade: number;
 }
+
+export type WallSide = "left" | "right";
+
+/** Optional FX hook — flight may emit particles; preview must omit this. */
+export type WallHitCallback = (side: WallSide, x: number, y: number) => void;
+
+export interface WallBounceOptions {
+  ballRadius?: number;
+  restitution?: number;
+  onHit?: WallHitCallback;
+}

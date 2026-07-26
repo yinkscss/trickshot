@@ -1,5 +1,5 @@
 import { FIXED_DT, G } from "./constants.js";
-import type { Projectile } from "./types.js";
+import type { Projectile, WallHitCallback } from "./types.js";
 import { applyWallBounce } from "./walls.js";
 
 /**
@@ -11,11 +11,12 @@ export function stepProjectile(
   dt: number,
   worldWidth: number,
   gravity = G,
+  onWallHit?: WallHitCallback,
 ): boolean {
   p.vy += gravity * dt;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
-  return applyWallBounce(p, worldWidth);
+  return applyWallBounce(p, worldWidth, { onHit: onWallHit });
 }
 
 /**
@@ -28,12 +29,13 @@ export function stepProjectileSubsteps(
   worldWidth: number,
   fixedDt = FIXED_DT,
   gravity = G,
+  onWallHit?: WallHitCallback,
 ): boolean {
   let bounced = false;
   let remaining = frameDt;
   while (remaining > 0) {
     const dt = Math.min(remaining, fixedDt);
-    if (stepProjectile(p, dt, worldWidth, gravity)) bounced = true;
+    if (stepProjectile(p, dt, worldWidth, gravity, onWallHit)) bounced = true;
     remaining -= dt;
   }
   return bounced;

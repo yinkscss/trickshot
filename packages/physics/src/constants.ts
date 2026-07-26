@@ -10,6 +10,14 @@ export const WALL_REST = 0.9;
 export const MIN_SHOT = 160;
 
 /**
+ * Max position/velocity delta when comparing preview dots vs stepped flight.
+ * Float64 integrator noise stays below 1e-9 for fixed PREVIEW_DT steps;
+ * use 1e-6 when comparing variable frameDt via substeps.
+ */
+export const FLIGHT_EPSILON = 1e-9;
+export const SUBSTEP_EPSILON = 1e-6;
+
+/**
  * Fixed integrator step (1/120 s). Used by aim preview and server replay.
  * Flight may pass variable frame dt; use `stepProjectileSubsteps` for parity.
  */
