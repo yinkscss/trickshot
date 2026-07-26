@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getModeRules } from "./mode-rules.js";
 
 /** Locked schema version — reject unknown values in validators. */
 export const INPUT_LOG_VERSION = 1 as const;
@@ -134,12 +135,12 @@ export function validateInputLog(raw: unknown): InputLogValidationResult {
     });
   }
 
-  if (log.mode === "tournament") {
+  if (!getModeRules(log.mode).allowsContinues) {
     const illegal = log.frames.some((f) => f.type === "continue_accept");
     if (illegal) {
       errors.push({
         code: "tournament_continue",
-        message: "tournament logs cannot contain continue_accept events",
+        message: `${log.mode} logs cannot contain continue_accept events`,
       });
     }
   }
