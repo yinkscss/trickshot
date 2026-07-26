@@ -1,12 +1,7 @@
 import Phaser from "phaser";
-import {
-  CELO_SEPOLIA_CHAIN_ID,
-  TOURNAMENT_ALLOWS_CONTINUES,
-} from "@trickshot/shared";
 
 /**
- * Scaffold boot screen. Alpha will replace this with pitch-parity PlayScene
- * (custom 2D integrator, net drag, wall banks, one obstacle, seamless handoff).
+ * Brief splash → PlayScene (custom 2D integrator / net-drag aim).
  */
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -18,7 +13,7 @@ export class BootScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#cfd1d6");
 
     this.add
-      .text(width / 2, height * 0.38, "TRICK SHOT", {
+      .text(width / 2, height * 0.42, "TRICK SHOT", {
         fontFamily: "Nunito, system-ui, sans-serif",
         fontSize: `${Math.min(64, width * 0.14)}px`,
         fontStyle: "900",
@@ -27,7 +22,7 @@ export class BootScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, height * 0.38 + 52, "PWA scaffold · Celo Sepolia", {
+      .text(width / 2, height * 0.42 + 48, "loading…", {
         fontFamily: "Nunito, system-ui, sans-serif",
         fontSize: "16px",
         fontStyle: "800",
@@ -35,30 +30,8 @@ export class BootScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.add
-      .text(
-        width / 2,
-        height * 0.55,
-        [
-          "Pitch parity lands in Alpha:",
-          "net drag · wall banks · 1 obstacle · combo juice",
-          "",
-          `chainId ${CELO_SEPOLIA_CHAIN_ID}`,
-          `tournament continues: ${TOURNAMENT_ALLOWS_CONTINUES ? "on" : "off"}`,
-        ].join("\n"),
-        {
-          fontFamily: "Nunito, system-ui, sans-serif",
-          fontSize: "14px",
-          fontStyle: "700",
-          color: "#4a4e5a",
-          align: "center",
-          lineSpacing: 6,
-        },
-      )
-      .setOrigin(0.5);
-
-    this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
-      this.cameras.resize(gameSize.width, gameSize.height);
+    this.time.delayedCall(400, () => {
+      this.scene.start("play");
     });
   }
 }

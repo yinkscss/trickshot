@@ -1,9 +1,10 @@
 import Phaser from "phaser";
 import { BootScene } from "./scenes/BootScene";
+import { PlayScene } from "./scenes/PlayScene";
 
 const parent = document.getElementById("game");
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: parent ?? undefined,
   backgroundColor: "#cfd1d6",
@@ -13,6 +14,13 @@ new Phaser.Game({
     height: window.innerHeight,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene],
+  scene: [BootScene, PlayScene],
   banner: false,
+  input: {
+    activePointers: 1,
+  },
 });
+
+if (import.meta.env.DEV) {
+  (window as Window & { __trickshot?: Phaser.Game }).__trickshot = game;
+}
