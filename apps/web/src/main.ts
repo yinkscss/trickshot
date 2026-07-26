@@ -13,11 +13,16 @@ const game = new Phaser.Game({
     width: window.innerWidth,
     height: window.innerHeight,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    autoRound: true,
   },
   scene: [BootScene, PlayScene],
   banner: false,
   input: {
     activePointers: 1,
+  },
+  render: {
+    antialias: true,
+    roundPixels: true,
   },
 });
 
