@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trick Shot — Pixel-Perfect Gameplay Prompt Pack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8e9ec;
+      --ink: #1a1c22;
+      --soft: #4a4e5a;
+      --muted: #7a7f8c;
+      --rim: #ff5a1f;
+      --ball: #2b6cff;
+      --card: #f4f5f7;
+      --line: rgba(26, 28, 34, 0.12);
+      --warn: #b45309;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 55% 35% at 15% 0%, rgba(255,90,31,.14), transparent 50%),
+        radial-gradient(ellipse 50% 30% at 90% 0%, rgba(43,108,255,.1), transparent 45%),
+        linear-gradient(180deg, var(--bg), #d5d7dc);
+      min-height: 100vh;
+      line-height: 1.45;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr minmax(300px, 400px);
+      min-height: 100vh;
+    }
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; }
+      .preview {
+        position: sticky; bottom: 0; max-height: 42vh; height: auto !important;
+        border-top: 2px solid var(--ink); border-left: none !important;
+      }
+    }
+    .main { padding: 1.5rem 1.25rem 3rem; max-width: 740px; }
+    .nav {
+      display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
+      font-size: 0.78rem; font-weight: 600; margin-bottom: 1.25rem;
+    }
+    .nav a { color: var(--soft); text-decoration: none; }
+    .nav a:hover { color: var(--rim); }
+    .eyebrow {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--rim); margin-bottom: 0.4rem;
+    }
+    h1 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: clamp(2.3rem, 7vw, 3.5rem);
+      line-height: 0.95; letter-spacing: 0.03em; margin-bottom: 0.5rem;
+    }
+    h1 span { color: var(--ball); }
+    .lead { color: var(--soft); font-size: 0.95rem; margin-bottom: 0.85rem; max-width: 38rem; }
+    .callout {
+      background: rgba(255,90,31,.1);
+      border-left: 4px solid var(--rim);
+      border-radius: 0 10px 10px 0;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.84rem;
+      color: var(--soft);
+      margin-bottom: 1.25rem;
+    }
+    .callout strong { color: var(--ink); }
+    .progress-meta {
+      display: flex; justify-content: space-between;
+      font-family: "IBM Plex Mono", monospace; font-size: 0.7rem;
+      color: var(--muted); margin-bottom: 0.35rem;
+    }
+    .bar {
+      height: 8px; background: #d0d2d8; border-radius: 999px; overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+    .bar > i {
+      display: block; height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--rim), var(--ball));
+      transition: width 0.25s ease;
+    }
+    .q {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1rem 1.1rem 1.1rem;
+      margin-bottom: 0.85rem;
+    }
+    .q.answered { border-color: rgba(31,138,76,.4); }
+    .q-num {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.68rem; color: var(--rim); font-weight: 500;
+      letter-spacing: 0.06em; margin-bottom: 0.25rem;
+    }
+    .q h2 { font-size: 1.02rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .q .hint { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem; }
+    .opts { display: grid; gap: 0.4rem; }
+    label.opt {
+      display: flex; gap: 0.65rem; align-items: flex-start;
+      padding: 0.65rem 0.75rem; border-radius: 10px;
+      border: 1.5px solid var(--line); background: #fff;
+      cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    label.opt:hover { border-color: rgba(43,108,255,.4); }
+    label.opt:has(input:checked) {
+      border-color: var(--ball);
+      background: rgba(43,108,255,.06);
+    }
+    label.opt input { margin-top: 0.2rem; accent-color: var(--ball); }
+    label.opt strong { display: block; font-size: 0.9rem; margin-bottom: 0.1rem; }
+    label.opt .note { font-size: 0.78rem; color: var(--muted); }
+    .star { color: var(--rim); font-size: 0.75rem; }
+    .actions {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;
+    }
+    button {
+      font-family: inherit; font-weight: 700; font-size: 0.85rem;
+      border: none; border-radius: 10px; padding: 0.65rem 1rem; cursor: pointer;
+    }
+    .btn-primary { background: var(--rim); color: #fff; box-shadow: 0 3px 0 #b33a0a; }
+    .btn-ghost { background: transparent; border: 2px solid var(--ink); color: var(--ink); }
+    .btn-soft { background: var(--ball); color: #fff; box-shadow: 0 3px 0 #1a1c22; }
+    .preview {
+      background: #12141a; color: #e8ebf2;
+      padding: 1.25rem 1.15rem; display: flex; flex-direction: column;
+      border-left: 1px solid #2a2e38; position: sticky; top: 0; height: 100vh;
+    }
+    .preview h3 {
+      font-family: "Bebas Neue", sans-serif;
+      font-size: 1.45rem; letter-spacing: 0.04em; margin-bottom: 0.35rem;
+    }
+    .preview .sub {
+      font-size: 0.75rem; color: #8b93a8; margin-bottom: 0.85rem;
+      font-family: "IBM Plex Mono", monospace;
+    }
+    #promptOut {
+      flex: 1; overflow: auto;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.7rem; line-height: 1.55;
+      white-space: pre-wrap; word-break: break-word;
+      background: #0a0b10; border: 1px solid #2a2e38;
+      border-radius: 12px; padding: 0.9rem; color: #c5cad8;
+    }
+    .preview .btns { display: flex; gap: 0.5rem; margin-top: 0.85rem; }
+    .preview .btns button { flex: 1; }
+    .preview .btn-ghost { border-color: #555; color: #ddd; }
+    .toast {
+      font-size: 0.75rem; color: #7dffa3; min-height: 1.2em; margin-top: 0.5rem;
+      font-family: "IBM Plex Mono", monospace;
+    }
+    .refs {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.35rem;
+      margin: 0.75rem 0 1.25rem;
+    }
+    .refs img {
+      width: 100%; aspect-ratio: 9/16; object-fit: cover; object-position: center top;
+      border-radius: 6px; border: 1px solid var(--line); background: #ddd;
+    }
+    @media (max-width: 700px) { .refs { grid-template-columns: repeat(3, 1fr); } }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="main">
+      <nav class="nav">
+        <a href="../index.html">Home</a>
+        <a href="prd.html">PRD</a>
+        <a href="roadmap.html">Roadmap</a>
+        <a href="stack-questions.html">Stack</a>
+        <a href="animation-pitch.html">Current pitch</a>
+      </nav>
+
+      <p class="eyebrow">Gameplay · Pixel fidelity</p>
+      <h1>GAMEPLAY <span>PROMPT PACK</span></h1>
+      <p class="lead">
+        Build a copy-paste agent prompt for <strong>pixel-perfect</strong> web gameplay.
+        The current <code>animation-pitch.html</code> is a feel demo — not the ship bar.
+      </p>
+      <div class="callout">
+        <strong>North star:</strong> side-by-side with
+        <code>assets/references/</code> Dunk Shot–style screenshots. If a stranger can’t tell
+        which is reference vs build at a glance for rim, net, ball, trail, and HUD — it’s not done.
+      </div>
+
+      <div class="refs" aria-label="Reference thumbnails">
+        <img src="../assets/references/IMG_3078-bb2c6583-3799-4aff-9175-d14bcd14bda7.png" alt="Menu reference" />
+        <img src="../assets/references/IMG_3080-e4f121a4-a418-4d6c-b1f9-6420e49388e5.png" alt="Flight trail reference" />
+        <img src="../assets/references/IMG_3081-6edc870e-2de0-42d4-a07f-d96a992d9270.png" alt="Aim dots reference" />
+        <img src="../assets/references/IMG_3087-ff343ece-0b85-4a7a-a67d-b86bd85effa0.png" alt="Star hoop reference" />
+        <img src="../assets/references/IMG_3084-d52ce418-4c56-4117-ae30-31ad582c5ce7.png" alt="Obstacle reference" />
+      </div>
+
+      <div class="progress-meta">
+        <span id="progressLabel">0 / 0 answered</span>
+        <span>★ = recommended</span>
+      </div>
+      <div class="bar"><i id="progressBar"></i></div>
+      <div id="questions"></div>
+      <div class="actions">
+        <button type="button" class="btn-soft" id="btnRec">Reset to recommended</button>
+        <button type="button" class="btn-ghost" id="btnClear">Clear all</button>
+        <button type="button" class="btn-primary" id="btnCopyMain">Copy final prompt</button>
+      </div>
+    </div>
+
+    <aside class="preview">
+      <h3>FINAL PROMPT</h3>
+      <p class="sub" id="readyState">Fill answers → copy</p>
+      <pre id="promptOut"></pre>
+      <div class="btns">
+        <button type="button" class="btn-primary" id="btnCopy">Copy</button>
+        <button type="button" class="btn-ghost" id="btnSelect">Select all</button>
+      </div>
+      <div class="toast" id="toast"></div>
+    </aside>
+  </div>
+
+<script>
+(() => {
+  const STORAGE_KEY = "trickshot-gameplay-prompt-v1";
+
+  const QUESTIONS = [
+    {
+      id: "fidelity",
+      title: "Visual fidelity bar",
+      hint: "How close to the reference screenshots?",
+      rec: "pixel",
+      options: [
+        { id: "pixel", label: "Pixel-perfect / indistinguishable at glance", note: "Rim, net mesh, ball, trail, HUD, spacing must match references" },
+        { id: "near", label: "Near-perfect (± few px, same silhouette)", note: "Same art language; tiny spacing diffs OK" },
+        { id: "spirit", label: "Spirit match only", note: "Not enough — current pitch already fails this bar" },
+      ],
+    },
+    {
+      id: "approach",
+      title: "Code approach",
+      hint: "Current animation-pitch is not the target quality.",
+      rec: "rebuild",
+      options: [
+        { id: "rebuild", label: "Rebuild gameplay module clean", note: "New web gameplay scene; keep pitch only as throwaway reference" },
+        { id: "rewrite_pitch", label: "Rewrite animation-pitch.html in place", note: "Same file, but treat as full rewrite not polish" },
+        { id: "iterate", label: "Iterate the existing pitch", note: "Risk: more spaghetti — not recommended" },
+      ],
+    },
+    {
+      id: "engine",
+      title: "Web runtime for this slice",
+      hint: "Gameplay only — stack pack still owns full product stack.",
+      rec: "phaser",
+      options: [
+        { id: "phaser", label: "Phaser 3", note: "Web-first; scenes, input, tweens for juice" },
+        { id: "pixi", label: "PixiJS + custom loop", note: "Max render control for pixel art of nets/trails" },
+        { id: "canvas", label: "Plain Canvas 2D", note: "Evolve from pitch; you own every draw call" },
+      ],
+    },
+    {
+      id: "art_source",
+      title: "Art / asset source",
+      hint: "How to get Dunk Shot–level nets and trails.",
+      rec: "vector_match",
+      options: [
+        { id: "vector_match", label: "Procedural vector matching references", note: "Code-drawn rim/net/ball/trail tuned against screenshots" },
+        { id: "export_sprites", label: "Export sprite sheets from refs + code", note: "Trace/clean assets; animate in engine" },
+        { id: "hybrid", label: "Hybrid: sprites for net/rim, code for trail/VFX", note: "Best of both for pixel bar" },
+      ],
+    },
+    {
+      id: "net_priority",
+      title: "Net quality priority",
+      hint: "Repeated failure mode: net doesn’t read as a real basket.",
+      rec: "net_first",
+      options: [
+        { id: "net_first", label: "Net is P0 — ship only when net passes side-by-side", note: "Woven pouch, rim knots, drag stretch on fabric not ball" },
+        { id: "balanced", label: "Net + trail + HUD equal priority", note: "Parallel polish across heroes" },
+        { id: "trail_first", label: "Cyan fire trail first", note: "Secondary — net still must pass" },
+      ],
+    },
+    {
+      id: "layout",
+      title: "Lane layout (locked)",
+      hint: "User already rejected centered stack.",
+      rec: "zigzag",
+      options: [
+        { id: "zigzag", label: "Zigzag climb (ref layout)", note: "Source low L/R, goal high opposite side; alternate every dunk" },
+        { id: "center", label: "Centered vertical stack", note: "Forbidden — do not select" },
+      ],
+    },
+    {
+      id: "input",
+      title: "Aim / drag feel",
+      hint: "Slingshot must feel physically correct.",
+      rec: "net_drag",
+      options: [
+        { id: "net_drag", label: "Drag stretches net; ball seated; preview = flight + walls", note: "Locked from playtests" },
+        { id: "ball_drag", label: "Drag moves the ball", note: "Rejected — do not use" },
+      ],
+    },
+    {
+      id: "obstacles",
+      title: "Obstacles this sprint",
+      hint: "Density for pixel-perfect core loop.",
+      rec: "one",
+      options: [
+        { id: "one", label: "Exactly one obstacle per shot", note: "Spinner / wall / bumper / gate — rotate types across shots" },
+        { id: "none", label: "No obstacles until art ships", note: "Empty lane while net/trail hit fidelity" },
+        { id: "multi", label: "Multiple obstacles", note: "Rejected for now" },
+      ],
+    },
+    {
+      id: "handoff",
+      title: "Loop handoff",
+      hint: "Between dunks.",
+      rec: "seamless",
+      options: [
+        { id: "seamless", label: "Seamless carry (scored hoop → new source)", note: "No teleport snap; rim color morph; next goal eases in" },
+        { id: "hard_cut", label: "Hard cut / instant place()", note: "Rejected — feels broken" },
+      ],
+    },
+    {
+      id: "scope",
+      title: "Out of scope this prompt",
+      hint: "Keep the agent from boiling the ocean.",
+      rec: "gameplay_only",
+      options: [
+        { id: "gameplay_only", label: "Gameplay + HUD only", note: "No shop, wallet, ads, tournaments, season pass" },
+        { id: "gameplay_menu", label: "Gameplay + simple main menu shell", note: "Title + play; still no web3" },
+        { id: "full_product", label: "Full product", note: "Too wide — don’t" },
+      ],
+    },
+    {
+      id: "verify",
+      title: "Definition of done",
+      hint: "How the agent proves pixel-perfect.",
+      rec: "side_by_side",
+      options: [
+        { id: "side_by_side", label: "Side-by-side screenshots vs assets/references/", note: "Idle, aim, mid-flight, scored — all four" },
+        { id: "checklist", label: "Written checklist only", note: "Weaker — pair with screenshots if possible" },
+        { id: "feel_ok", label: "“Feels OK” subjective", note: "Not acceptable for this pack" },
+      ],
+    },
+    {
+      id: "deliverable",
+      title: "Primary deliverable path",
+      hint: "Where the new gameplay lives in the repo.",
+      rec: "gameplay_dir",
+      options: [
+        { id: "gameplay_dir", label: "New docs/gameplay/ or src/gameplay/ web build", note: "Clean module; link from index" },
+        { id: "replace_pitch", label: "Replace docs/animation-pitch.html", note: "Same URL, new quality bar" },
+        { id: "both", label: "New module + thin pitch wrapper", note: "Pitch page loads the real game" },
+      ],
+    },
+  ];
+
+  const answers = {};
+  const root = document.getElementById("questions");
+  const promptOut = document.getElementById("promptOut");
+  const progressBar = document.getElementById("progressBar");
+  const progressLabel = document.getElementById("progressLabel");
+  const readyState = document.getElementById("readyState");
+  const toast = document.getElementById("toast");
+
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      if (saved && typeof saved === "object") {
+        QUESTIONS.forEach((q) => {
+          if (saved[q.id] && q.options.some((o) => o.id === saved[q.id])) {
+            answers[q.id] = saved[q.id];
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+  }
+
+  function setRecommended() {
+    QUESTIONS.forEach((q) => { answers[q.id] = q.rec; });
+  }
+
+  function clearAll() {
+    QUESTIONS.forEach((q) => { delete answers[q.id]; });
+  }
+
+  function opt(qid) {
+    const q = QUESTIONS.find((x) => x.id === qid);
+    return q?.options.find((o) => o.id === answers[qid]);
+  }
+
+  function buildPrompt() {
+    const answered = QUESTIONS.filter((q) => answers[q.id]);
+    const missing = QUESTIONS.filter((q) => !answers[q.id]).map((q) => q.title);
+    const lines = [];
+
+    lines.push("# Trick Shot — Pixel-Perfect Gameplay Build");
+    lines.push("");
+    lines.push("You are building the **real web gameplay** for Trick Shot.");
+    lines.push("The existing `docs/animation-pitch.html` is a rough feel demo and **does not meet quality**.");
+    lines.push("Do not polish that demo into “good enough.” Hit the fidelity bar below or keep iterating.");
+    lines.push("");
+    lines.push("## Product constraints (already locked)");
+    lines.push("- Web-based game (browser / PWA first) — not Unity native.");
+    lines.push("- Celo product later; **this prompt is gameplay/art/feel only** unless scope says otherwise.");
+    lines.push("- Repo: https://github.com/yinkscss/trickshot · local: ~/.cursor/TRICK-SHOT");
+    lines.push("");
+    lines.push("## Locked decisions from gameplay prompt pack");
+    if (!answered.length) {
+      lines.push("(No answers yet — complete docs/gameplay-prompt-pack.html.)");
+    } else {
+      answered.forEach((q) => {
+        const o = q.options.find((x) => x.id === answers[q.id]);
+        lines.push(`- **${q.title}:** ${o.label}`);
+        lines.push(`  - ${o.note}`);
+        lines.push(`  - id: \`${q.id}=${answers[q.id]}\``);
+      });
+    }
+    lines.push("");
+    lines.push("## Visual north star (mandatory)");
+    lines.push("Use these reference screenshots as the ground truth (read the images, don’t invent a new style):");
+    lines.push("- `assets/references/IMG_3078-*.png` — menu / brand / first-hoop tutorial language");
+    lines.push("- `assets/references/IMG_3079-*.png`, `IMG_3080-*.png` — ball in flight + cyan diamond fire trail");
+    lines.push("- `assets/references/IMG_3081-*.png`, `IMG_3087-*.png` — aim orange dots, seated ball, star over goal");
+    lines.push("- `assets/references/IMG_3082-*.png` … `IMG_3086-*.png` — hoop angles, obstacles, ghost/motion");
+    lines.push("");
+    lines.push("Court: flat light gray (~#E8E8EA). HUD: pause top-left, stars top-right, huge faint chain number in background.");
+    lines.push("Source rim: charcoal/gray. Target rim: saturated orange-red. Nets: white woven pouch (not a flat cone).");
+    lines.push("Ball: glossy blue marble. Trail: cyan overlapping diamonds / fire rings on launch.");
+    lines.push("");
+    lines.push("## Hard gameplay rules (non-negotiable)");
+    lines.push("1. **Zigzag climb** — source low on one side, goal high on the *other*; alternate every dunk. Never centered twin stack.");
+    lines.push("2. **Drag = net stretch** — ball stays seated in the rim; fabric elongates toward finger; not “blue orb follows pointer.”");
+    lines.push("3. **Aim preview = real flight** — same gravity + **left/right wall bounce** as the shot (bank shots must be aimable).");
+    lines.push("4. **One obstacle per shot** (or none if that decision is selected) — never stack hazards.");
+    lines.push("5. **Seamless handoff** — scored hoop carries the ball down to become the next source; old hoop exits; new goal eases in. No teleport snap.");
+    lines.push("6. Portrait phone frame / mobile-first touch + mouse.");
+    lines.push("");
+    lines.push("## Element checklist (each must pass side-by-side)");
+    lines.push("- [ ] Rim (thickness, ellipse perspective, orange vs grey states)");
+    lines.push("- [ ] Net mesh (woven diamonds, rim knots, soft pouch depth, drag deformation)");
+    lines.push("- [ ] Ball (marble shading, seated glow when idle — not a drag proxy)");
+    lines.push("- [ ] Orange aim dots (spacing, fade, wall redirects)");
+    lines.push("- [ ] Cyan fire trail + launch rings");
+    lines.push("- [ ] Star pickup above goal");
+    lines.push("- [ ] HUD + giant background score number");
+    lines.push("- [ ] Obstacle art (if in scope) matching red peg/spinner language in refs");
+    lines.push("- [ ] Combo / swish juice without breaking readability");
+    lines.push("");
+    lines.push("## Anti-goals");
+    lines.push("- Do not ship another abstract cone net.");
+    lines.push("- Do not center both hoops.");
+    lines.push("- Do not let the ball be the drag handle.");
+    lines.push("- Do not add shop, wallet, ads, or tournaments in this slice.");
+    lines.push("- Do not claim pixel-perfect without screenshot proof vs references.");
+    lines.push("");
+    if (missing.length) {
+      lines.push("## Still undecided (ask before assuming)");
+      missing.forEach((m) => lines.push(`- ${m}`));
+      lines.push("");
+    }
+    lines.push("## Your task");
+    lines.push("1. Study `assets/references/` images before coding.");
+    lines.push("2. Implement the deliverable path from the decisions above.");
+    lines.push("3. Tune until idle / aim / flight / score frames match references at a glance.");
+    lines.push("4. Prove it: capture or describe side-by-side comparisons for those four states.");
+    lines.push("5. Keep commits surgical; push if the repo workflow expects it.");
+    lines.push("");
+    lines.push("Start by proposing a short plan (files + approach), then implement to the fidelity bar.");
+
+    return lines.join("\n");
+  }
+
+  function syncUI() {
+    const total = QUESTIONS.length;
+    const count = QUESTIONS.filter((q) => answers[q.id]).length;
+    progressBar.style.width = `${(count / total) * 100}%`;
+    progressLabel.textContent = `${count} / ${total} answered`;
+    readyState.textContent = count === total ? "Complete — ready to copy" : `${total - count} remaining`;
+    promptOut.textContent = buildPrompt();
+    QUESTIONS.forEach((q) => {
+      const el = root.querySelector(`[data-qid="${q.id}"]`);
+      if (el) el.classList.toggle("answered", Boolean(answers[q.id]));
+    });
+  }
+
+  function render() {
+    root.innerHTML = QUESTIONS.map((q, idx) => `
+      <section class="q" data-qid="${q.id}">
+        <div class="q-num">Q${String(idx + 1).padStart(2, "0")}</div>
+        <h2>${q.title}</h2>
+        <p class="hint">${q.hint}</p>
+        <div class="opts">
+          ${q.options.map((o) => `
+            <label class="opt">
+              <input type="radio" name="${q.id}" value="${o.id}" ${answers[q.id] === o.id ? "checked" : ""} />
+              <div>
+                <strong>${o.label}${o.id === q.rec ? ' <span class="star">★</span>' : ""}</strong>
+                <div class="note">${o.note}</div>
+              </div>
+            </label>
+          `).join("")}
+        </div>
+      </section>
+    `).join("");
+
+    root.querySelectorAll("input[type=radio]").forEach((input) => {
+      input.addEventListener("change", () => {
+        answers[input.name] = input.value;
+        save();
+        syncUI();
+      });
+    });
+    syncUI();
+  }
+
+  async function copyPrompt() {
+    const text = buildPrompt();
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.textContent = "Copied to clipboard";
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(promptOut);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      toast.textContent = "Selected — press Cmd/Ctrl+C";
+    }
+    setTimeout(() => { toast.textContent = ""; }, 2200);
+  }
+
+  document.getElementById("btnRec").addEventListener("click", () => {
+    setRecommended();
+    save();
+    render();
+  });
+  document.getElementById("btnClear").addEventListener("click", () => {
+    clearAll();
+    save();
+    render();
+  });
+  document.getElementById("btnCopy").addEventListener("click", copyPrompt);
+  document.getElementById("btnCopyMain").addEventListener("click", copyPrompt);
+  document.getElementById("btnSelect").addEventListener("click", () => {
+    const range = document.createRange();
+    range.selectNodeContents(promptOut);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+
+  load();
+  if (!Object.keys(answers).length) setRecommended();
+  render();
+})();
+</script>
+</body>
+</html>
