@@ -47,4 +47,40 @@ describe("challenges progress", () => {
       true,
     );
   });
+
+  it("loadChallengesProgress falls back when localStorage access throws", () => {
+    const desc = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("blocked");
+      },
+    });
+    try {
+      const loaded = loadChallengesProgress();
+      assert.deepEqual(loaded, emptyChallengesProgress());
+    } finally {
+      if (desc) Object.defineProperty(globalThis, "localStorage", desc);
+      else delete (globalThis as { localStorage?: Storage }).localStorage;
+    }
+  });
+
+  it("normalizes malformed persisted progress maps", () => {
+    const storage = memStorage({
+      [CHALLENGES_PROGRESS_KEY]: JSON.stringify({
+        cleared: { "0": true, "1": "yes", "2": false },
+        stars: { "0": 2, "1": "two", "2": NaN },
+        unlockAll: "yes",
+      }),
+    });
+    const loaded = loadChallengesProgress(storage);
+    assert.deepEqual(loaded.cleared, { "0": true });
+    assert.deepEqual(loaded.stars, { "0": 2 });
+    assert.equal(loaded.unlockAll, undefined);
+
+    const badRoot = memStorage({
+      [CHALLENGES_PROGRESS_KEY]: JSON.stringify(["not", "an", "object"]),
+    });
+    assert.deepEqual(loadChallengesProgress(badRoot), emptyChallengesProgress());
+  });
 });

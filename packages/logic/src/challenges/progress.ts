@@ -16,10 +16,7 @@ export type ProgressStorage = {
 
 const memory = new Map<string, string>();
 
-function defaultStorage(): ProgressStorage {
-  if (typeof globalThis.localStorage !== "undefined") {
-    return globalThis.localStorage;
-  }
+function memoryStorage(): ProgressStorage {
   return {
     getItem(key) {
       return memory.get(key) ?? null;
@@ -30,21 +27,56 @@ function defaultStorage(): ProgressStorage {
   };
 }
 
+function defaultStorage(): ProgressStorage {
+  try {
+    const ls = globalThis.localStorage;
+    if (typeof ls !== "undefined") return ls;
+  } catch {
+    /* SecurityError / storage disabled — same class as setItem failures */
+  }
+  return memoryStorage();
+}
+
 export function emptyChallengesProgress(): ChallengesProgress {
   return { cleared: {}, stars: {} };
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function normalizeClearedMap(raw: unknown): Record<string, boolean> {
+  if (!isPlainObject(raw)) return {};
+  const out: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (v === true) out[k] = true;
+  }
+  return out;
+}
+
+function normalizeStarsMap(raw: unknown): Record<string, number> {
+  if (!isPlainObject(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) {
+      out[k] = v;
+    }
+  }
+  return out;
 }
 
 export function loadChallengesProgress(
   storage: ProgressStorage = defaultStorage(),
 ): ChallengesProgress {
   try {
-    const raw = JSON.parse(
+    const parsed: unknown = JSON.parse(
       storage.getItem(CHALLENGES_PROGRESS_KEY) || "{}",
-    ) as Partial<ChallengesProgress>;
+    );
+    if (!isPlainObject(parsed)) return emptyChallengesProgress();
     return {
-      cleared: raw.cleared ?? {},
-      stars: raw.stars ?? {},
-      ...(raw.unlockAll ? { unlockAll: true } : {}),
+      cleared: normalizeClearedMap(parsed.cleared),
+      stars: normalizeStarsMap(parsed.stars),
+      ...(parsed.unlockAll === true ? { unlockAll: true } : {}),
     };
   } catch {
     return emptyChallengesProgress();
