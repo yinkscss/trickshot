@@ -196,8 +196,8 @@ function drawHoop(
   ctx.fillStyle = "rgba(0,0,0,0.09)";
   ctx.fill();
 
-  // Far rim = bottom arc (sin(a) > 0), drawn first — camera looks UP at rim.
-  strokeRimArc(ctx, color, 0, Math.PI, false, 8);
+  // Far rim = top arc (sin < 0), then far cords — camera looks UP; near lip is bottom.
+  strokeRimArc(ctx, color, Math.PI, 0, true, 8);
   drawMouthShade(ctx);
   if (net) drawNetHalf(ctx, net, true);
 
@@ -215,8 +215,8 @@ function drawHoop(
     drawNetLoops(ctx, net);
   }
 
-  // Near rim = top arc (sin(a) < 0), drawn last so it occludes the ball.
-  strokeRimArc(ctx, color, Math.PI, 0, true, 8);
+  // Near rim = bottom arc (sin >= 0), drawn last so it occludes the ball.
+  strokeRimArc(ctx, color, 0, Math.PI, false, 8);
 
   ctx.beginPath();
   ctx.ellipse(0, 0, RX - 3.5, RY - 2.2, 0, 0, Math.PI * 2);

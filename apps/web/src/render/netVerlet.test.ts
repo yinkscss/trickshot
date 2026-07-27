@@ -9,13 +9,14 @@ import {
 } from "./netVerlet.js";
 
 describe("isNearCord (camera looks UP)", () => {
-  it("treats top arc (sin < 0) as near", () => {
-    assert.equal(isNearCord(-Math.PI / 2), true);
-    assert.equal(isNearCord((3 * Math.PI) / 2), true);
+  it("treats bottom arc (sin >= 0) as near — player-facing lip", () => {
+    assert.equal(isNearCord(Math.PI / 2), true);
+    assert.equal(isNearCord(0), true);
   });
 
-  it("treats bottom arc (sin > 0) as far", () => {
-    assert.equal(isNearCord(Math.PI / 2), false);
+  it("treats top arc (sin < 0) as far", () => {
+    assert.equal(isNearCord(-Math.PI / 2), false);
+    assert.equal(isNearCord((3 * Math.PI) / 2), false);
   });
 });
 

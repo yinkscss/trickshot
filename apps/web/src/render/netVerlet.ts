@@ -2,8 +2,9 @@
  * Verlet rope net — port of docs/challenges-pitch.html (makeNet / netStep / draw*).
  * Cosmetic only: never feeds physics or scoring.
  *
- * Camera looks slightly UP at each rim (ball launched from below).
- * Near cords = top ellipse arc (sin(a) < 0); far = bottom (sin(a) > 0).
+ * Camera looks slightly UP at each rim (ball launched from below). On screen,
+ * the player-facing lip is the BOTTOM of the ellipse (sin(a) >= 0) — that is
+ * NEAR and must occlude the ball. Far = top arc (sin(a) < 0).
  */
 import { BALL_RADIUS, FIXED_DT, RIM_RX, RIM_RY, hypot } from "../physics";
 
@@ -43,11 +44,11 @@ export interface VerletNet {
 }
 
 /**
- * Camera looks slightly UP at rims. Near (occludes ball) = top arc where sin(a) < 0.
- * Far (drawn first, shaded) = bottom arc where sin(a) > 0.
+ * Camera looks UP from below the hoop. Near (occludes ball) = bottom arc
+ * (sin(a) >= 0) — the lip closer to the player. Far = top arc (sin(a) < 0).
  */
 export function isNearCord(a: number): boolean {
-  return Math.sin(a) < 0;
+  return Math.sin(a) >= 0;
 }
 
 function netRest(i: number, j: number): { a: number; x: number; y: number } {
@@ -250,18 +251,15 @@ export function drawNetHalf(
   }
 }
 
-/**
- * Looking UP at the rim underside (not down into an opening).
- * Shade bias toward the far (+y) side; lighten the near lip.
- */
+/** Soft shading inside the rim so the mouth reads as an opening. */
 export function drawMouthShade(ctx: CanvasRenderingContext2D): void {
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(0, 0, RX - 2, RY - 1, 0, 0, Math.PI * 2);
   ctx.clip();
   const g = ctx.createLinearGradient(0, -RY, 0, RY);
-  g.addColorStop(0, "rgba(38,42,52,0.02)");
-  g.addColorStop(1, "rgba(38,42,52,0.17)");
+  g.addColorStop(0, "rgba(38,42,52,0.17)");
+  g.addColorStop(1, "rgba(38,42,52,0.02)");
   ctx.fillStyle = g;
   ctx.fillRect(-RX, -RY, RX * 2, RY * 2);
   ctx.restore();
