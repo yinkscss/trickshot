@@ -28,6 +28,7 @@ import {
   MIN_SHOT,
   aimFrom,
   collideObstacles,
+  hoopLocal,
   hypot,
   maxPull,
   netPullForHoop,
@@ -52,13 +53,17 @@ import { MetaHud } from "../ui/metaHud";
 import {
   DirectCanvasRenderer,
   clientToCourt,
+  kickNet,
+  makeNet,
   safeTopInset,
   safeBottomInset,
   spawnLaunchRings,
+  stepNetFor,
   updateTrailEffects,
   type LaunchRing,
   type PitchDrawState,
   type TrailParticle,
+  type VerletNet,
   type VisualMode,
 } from "../render";
 
@@ -102,6 +107,11 @@ export class PlayLoop {
 
   private source: Hoop | null = null;
   private target: Hoop | null = null;
+  private sourceNet: VerletNet = makeNet();
+  private targetNet: VerletNet = makeNet();
+  private leaveNet: VerletNet | null = null;
+  private carryNet: VerletNet | null = null;
+  private arriveNet: VerletNet | null = null;
   private obstacles: Obstacle[] = [];
   private transition: DunkTransition | null = null;
   private ball: Projectile = { x: 0, y: 0, vx: 0, vy: 0 };
@@ -256,6 +266,7 @@ export class PlayLoop {
     this.dragPt = null;
     this.source = null;
     this.target = null;
+    this.resetNets();
     this.obstacles = [];
     this.transition = null;
     this.comboFx = null;
@@ -264,6 +275,14 @@ export class PlayLoop {
     this.hud.hideContinue();
     this.hud.hideSummary();
     this.hud.showModePicker();
+  }
+
+  private resetNets(): void {
+    this.sourceNet = makeNet();
+    this.targetNet = makeNet();
+    this.leaveNet = null;
+    this.carryNet = null;
+    this.arriveNet = null;
   }
 
   private finishRun(): void {
@@ -303,8 +322,10 @@ export class PlayLoop {
 
   /** Hard snap (boot / continue / resize). Dunks use seamless transition. */
   private place(fromScore: number, advanceSide = true): void {
-    if (fromScore === 0) this.side = 1;
-    else if (advanceSide) this.side *= -1;
+    if (fromScore === 0) {
+      this.side = 1;
+      this.resetNets();
+    } else if (advanceSide) this.side *= -1;
 
     const mode = this.runFsm.state.mode;
     const seed = this.currentSeed();
@@ -371,6 +392,7 @@ export class PlayLoop {
           this.ball.vx = intent.vx;
           this.ball.vy = intent.vy;
           spawnLaunchRings(this.rings, intent.x, intent.y);
+          kickNet(this.sourceNet, 5);
           break;
         case "stopBall":
           this.ball.vx = 0;
@@ -381,6 +403,7 @@ export class PlayLoop {
             this.target.wobble = 1.5;
             this.ball.x = this.target.x;
             this.ball.y = this.target.y - 1;
+            kickNet(this.targetNet, 13);
           }
           break;
         case "beginDunkTransition":
@@ -568,6 +591,7 @@ export class PlayLoop {
           this.runFsm.dispatch({ type: "finishTransition" }),
         );
       }
+      this.stepNets(dt);
       this.drawFrame(time);
       return;
     }
@@ -611,6 +635,7 @@ export class PlayLoop {
       }
     }
 
+    this.stepNets(dt);
     this.drawFrame(time);
   }
 
@@ -662,6 +687,10 @@ export class PlayLoop {
     });
     this.side = side;
     this.transition = transition;
+    // Carry scored hoop's net; leave fades old source; arrive gets a fresh net.
+    this.leaveNet = this.sourceNet;
+    this.carryNet = this.targetNet;
+    this.arriveNet = makeNet();
     this.source = null;
     this.target = null;
     this.obstacles = [];
@@ -674,6 +703,11 @@ export class PlayLoop {
     const next = finishDunkTransition(this.transition);
     this.source = next.source;
     this.target = next.target;
+    this.sourceNet = this.carryNet ?? makeNet();
+    this.targetNet = this.arriveNet ?? makeNet();
+    this.leaveNet = null;
+    this.carryNet = null;
+    this.arriveNet = null;
     this.obstacles = next.obstacles;
     this.ball = next.ball;
     this.aimOrigin = next.aimOrigin;
@@ -682,6 +716,31 @@ export class PlayLoop {
     this.dragging = false;
     this.dragPt = null;
     this.applyShotStar(this.runFsm.state.score);
+  }
+
+  private stepNets(dt: number): void {
+    const ball = this.ball;
+    const local = (h: { x: number; y: number; ang: number }, x: number, y: number) =>
+      hoopLocal({ ...h, wobble: 0 }, x, y);
+    if (this.transition) {
+      const tr = this.transition;
+      if (this.leaveNet && tr.leave) {
+        stepNetFor(this.leaveNet, tr.leave, ball, dt, local);
+      }
+      if (this.carryNet && tr.carry) {
+        stepNetFor(this.carryNet, tr.carry, ball, dt, local);
+      }
+      if (this.arriveNet && tr.arrive) {
+        stepNetFor(this.arriveNet, tr.arrive, ball, dt, local);
+      }
+      return;
+    }
+    if (this.source) {
+      stepNetFor(this.sourceNet, this.source, ball, dt, local);
+    }
+    if (this.target) {
+      stepNetFor(this.targetNet, this.target, ball, dt, local);
+    }
   }
 
   private visualMode(): VisualMode {
@@ -747,6 +806,9 @@ export class PlayLoop {
               color: mixRimCss(tr.carry.colorT ?? 0),
             }
           : null,
+        leaveNet: this.leaveNet,
+        arriveNet: this.arriveNet,
+        carryNet: this.carryNet,
         oldObstacles: tr.oldObstacles,
         nextObstacles: tr.nextObstacles,
       };
@@ -773,6 +835,8 @@ export class PlayLoop {
       ball: { x: this.ball.x, y: this.ball.y },
       source: this.source,
       target: this.target,
+      sourceNet: mode === "transition" ? null : this.sourceNet,
+      targetNet: mode === "transition" ? null : this.targetNet,
       sourcePull,
       obstacles: this.obstacles,
       star: this.starPos,
@@ -873,6 +937,8 @@ export class PlayLoop {
     this.ball.vx = 0;
     this.ball.vy = 0;
     tgt.wobble = 1.2;
+    kickNet(this.targetNet, 13);
+    for (let i = 0; i < 24; i++) this.stepNets(1 / 60);
     this.scoreState = {
       ...this.scoreState,
       score: Math.max(1, this.scoreState.score),

@@ -1,15 +1,23 @@
 /**
- * Canvas2D pitch draw port — nearly verbatim from docs/animation-pitch.html
- * (drawHoop / drawWovenNet / drawMarble / drawFireAura / drawTrail / HUD / …).
+ * Canvas2D pitch draw port — animation-pitch.html visuals + challenges-pitch
+ * verlet net (drawHoop depth split / drawMarble / drawFireAura / trail / HUD).
  */
 import {
   BALL_RADIUS,
   RIM_RX,
   RIM_RY,
+  hoopLocal,
   type Obstacle,
   type PredictDot,
 } from "../physics";
 import { COURT, CYAN, GREY, ORANGE, RED, STAR, STAR_LINE } from "./colors";
+import {
+  drawMouthShade,
+  drawNetHalf,
+  drawNetHem,
+  drawNetLoops,
+  type VerletNet,
+} from "./netVerlet";
 import type {
   LaunchRing,
   PitchHoop,
@@ -35,6 +43,8 @@ export interface PitchDrawState {
   ball: { x: number; y: number };
   source: PitchHoop | null;
   target: PitchHoop | null;
+  sourceNet: VerletNet | null;
+  targetNet: VerletNet | null;
   sourcePull: PitchPull | null;
   obstacles: Obstacle[];
   star: { x: number; y: number } | null;
@@ -59,6 +69,9 @@ export interface PitchDrawState {
     arrive: (PitchHoop & { a?: number }) | null;
     arriveTo: { x: number; y: number } | null;
     carry: (PitchHoop & { color?: string }) | null;
+    leaveNet: VerletNet | null;
+    arriveNet: VerletNet | null;
+    carryNet: VerletNet | null;
     oldObstacles: Obstacle[];
     nextObstacles: Obstacle[];
   } | null;
@@ -78,139 +91,6 @@ function strokeRimArc(
   ctx.lineWidth = width;
   ctx.lineCap = "round";
   ctx.stroke();
-}
-
-function drawWovenNet(
-  ctx: CanvasRenderingContext2D,
-  wob: number,
-  pull: PitchPull = { lx: 0, ly: 0, amt: 0 },
-): void {
-  const amt = pull.amt || 0;
-  const depth = 52 + wob * 16 + amt * 28;
-  const attachY = RY * 0.35;
-  const topW = RX * 0.92;
-  const botW = RX * (0.28 - amt * 0.06);
-  const cols = 8;
-  const rows = 5;
-  const yankX = (pull.lx || 0) * 0.55;
-  const yankY = (pull.ly || 0) * 0.55;
-
-  function pt(i: number, j: number) {
-    const u = i / (cols - 1);
-    const v = j / rows;
-    const spread = topW + (botW - topW) * v;
-    let x = -spread + u * spread * 2;
-    let y = attachY + v * depth + wob * v * 8;
-    const belly = Math.sin(u * Math.PI) * (4 + v * 6);
-    x *= 1 - v * 0.04;
-    y += belly * 0.15;
-    const falloff = v * v * amt;
-    x += yankX * falloff;
-    y += yankY * falloff;
-    x *= 1 - falloff * 0.12;
-    return { x, y };
-  }
-
-  ctx.beginPath();
-  ctx.moveTo(pt(0, 0).x, pt(0, 0).y);
-  for (let i = 1; i < cols; i++) {
-    const p = pt(i, 0);
-    ctx.lineTo(p.x, p.y);
-  }
-  ctx.lineTo(pt(cols - 1, rows).x, pt(cols - 1, rows).y);
-  ctx.lineTo(pt(0, rows).x, pt(0, rows).y);
-  ctx.closePath();
-  ctx.fillStyle = `rgba(255,255,255,${0.2 + amt * 0.12})`;
-  ctx.fill();
-
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  ctx.strokeStyle = "rgba(255,255,255,0.98)";
-  ctx.lineWidth = 2.3;
-  for (let i = 0; i < cols; i++) {
-    ctx.beginPath();
-    const a = pt(i, 0);
-    ctx.moveTo(a.x, a.y);
-    for (let j = 1; j <= rows; j++) {
-      const p = pt(i, j);
-      ctx.lineTo(p.x, p.y);
-    }
-    ctx.stroke();
-  }
-
-  ctx.lineWidth = 2.05;
-  for (let j = 1; j <= rows; j++) {
-    ctx.beginPath();
-    for (let i = 0; i < cols; i++) {
-      const p = pt(i, j);
-      if (i === 0) ctx.moveTo(p.x, p.y);
-      else ctx.lineTo(p.x, p.y);
-    }
-    ctx.stroke();
-  }
-
-  ctx.lineWidth = 1.7;
-  ctx.strokeStyle = "rgba(255,255,255,0.9)";
-  for (let j = 0; j < rows; j++) {
-    for (let i = 0; i < cols - 1; i++) {
-      const a = pt(i, j);
-      const b = pt(i + 1, j + 1);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-      const c = pt(i + 1, j);
-      const d = pt(i, j + 1);
-      ctx.beginPath();
-      ctx.moveTo(c.x, c.y);
-      ctx.lineTo(d.x, d.y);
-      ctx.stroke();
-    }
-  }
-
-  ctx.lineWidth = 2.6;
-  ctx.strokeStyle = "#fff";
-  for (let i = 0; i < cols; i++) {
-    const p = pt(i, 0);
-    ctx.beginPath();
-    ctx.arc(p.x, p.y - 1, 2.8, 0.2, Math.PI - 0.2);
-    ctx.stroke();
-  }
-
-  const bl = pt(0, rows);
-  const br = pt(cols - 1, rows);
-  const bm = pt((cols - 1) / 2, rows);
-  ctx.beginPath();
-  ctx.moveTo(bl.x, bl.y);
-  ctx.quadraticCurveTo(bm.x, bm.y + 6 + wob * 8, br.x, br.y);
-  ctx.strokeStyle = "rgba(255,255,255,0.95)";
-  ctx.lineWidth = 2.2;
-  ctx.stroke();
-
-  if (amt > 0.08) {
-    const tip = pt((cols - 1) / 2, rows);
-    const n = 5 + ((amt * 6) | 0);
-    for (let k = 1; k <= n; k++) {
-      const t = k / n;
-      const px = tip.x + yankX * t * 0.85 * amt;
-      const py = tip.y + yankY * t * 0.85 * amt;
-      const s = (5 + (1 - t) * 10) * (0.55 + amt * 0.6);
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.rotate(Math.atan2(yankY, yankX) + Math.PI / 2);
-      ctx.globalAlpha = (1 - t) * 0.75 * amt;
-      ctx.fillStyle = "#fff";
-      ctx.beginPath();
-      ctx.moveTo(0, -s * 1.3);
-      ctx.lineTo(s * 0.55, 0);
-      ctx.lineTo(0, s * 0.7);
-      ctx.lineTo(-s * 0.55, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
-  }
 }
 
 export function drawFireAura(
@@ -297,65 +177,46 @@ function drawHoop(
   color: string,
   opts: {
     withBall?: boolean;
-    pullNet?: boolean;
-    pull?: PitchPull;
+    net?: VerletNet | null;
     ballX?: number;
     ballY?: number;
     timeMs?: number;
     combo?: number;
   } = {},
 ): void {
-  const { withBall = false, pullNet = false } = opts;
+  const { withBall = false, net = null } = opts;
   const { x, y, ang } = h;
-  const wob = h.wobble || 0;
-  const pull =
-    pullNet && opts.pull ? opts.pull : { lx: 0, ly: 0, amt: 0 };
-
-  const tip = pull.amt * 0.22;
-  const tipAng = ang + Math.atan2(pull.lx, 40) * tip;
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(tipAng);
+  ctx.rotate(ang);
 
   ctx.beginPath();
-  ctx.ellipse(
-    2 + pull.lx * pull.amt * 0.04,
-    10 + pull.ly * pull.amt * 0.04,
-    RX * 0.95,
-    RY * 1.1,
-    0,
-    0,
-    Math.PI * 2,
-  );
-  ctx.fillStyle = "rgba(0,0,0,0.08)";
+  ctx.ellipse(2, 12, RX * 0.95, RY * 1.1, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.09)";
   ctx.fill();
 
-  strokeRimArc(ctx, color, Math.PI, 0, true, 8);
-  drawWovenNet(ctx, wob, pull);
+  // Far rim = bottom arc (sin(a) > 0), drawn first — camera looks UP at rim.
+  strokeRimArc(ctx, color, 0, Math.PI, false, 8);
+  drawMouthShade(ctx);
+  if (net) drawNetHalf(ctx, net, true);
 
   if (withBall) {
-    ctx.restore();
     const bx = opts.ballX ?? x;
     const by = opts.ballY ?? y;
-    if (!(pullNet && pull.amt > 0.05)) {
-      drawFireAura(ctx, bx, by, BR, opts.timeMs ?? 0, opts.combo ?? 0);
-    } else {
-      const g = ctx.createRadialGradient(bx, by, 2, bx, by, BR * 1.6);
-      g.addColorStop(0, "rgba(78,203,255,0.18)");
-      g.addColorStop(1, "rgba(78,203,255,0)");
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(bx, by, BR * 1.6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    drawMarble(ctx, bx, by, BR);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(tipAng);
+    const L = hoopLocal({ x, y, ang, wobble: h.wobble ?? 0 }, bx, by);
+    drawFireAura(ctx, L.x, L.y, BR, opts.timeMs ?? 0, opts.combo ?? 0);
+    drawMarble(ctx, L.x, L.y, BR);
   }
 
-  strokeRimArc(ctx, color, 0, Math.PI, false, 8);
+  if (net) {
+    drawNetHalf(ctx, net, false);
+    drawNetHem(ctx, net);
+    drawNetLoops(ctx, net);
+  }
+
+  // Near rim = top arc (sin(a) < 0), drawn last so it occludes the ball.
+  strokeRimArc(ctx, color, Math.PI, 0, true, 8);
 
   ctx.beginPath();
   ctx.ellipse(0, 0, RX - 3.5, RY - 2.2, 0, 0, Math.PI * 2);
@@ -364,7 +225,7 @@ function drawHoop(
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.ellipse(0, 0, RX * 0.88, RY * 0.65, 0, 0.2, Math.PI - 0.2);
+  ctx.ellipse(0, 0, RX * 0.88, RY * 0.6, 0, 0.2, Math.PI - 0.2);
   ctx.strokeStyle = "rgba(255,255,255,0.35)";
   ctx.lineWidth = 2.2;
   ctx.stroke();
@@ -689,13 +550,13 @@ export function drawPitchFrame(
     if (tr.leave && (tr.leave.a ?? 1) > 0.02) {
       ctx.save();
       ctx.globalAlpha = tr.leave.a ?? 1;
-      drawHoop(ctx, tr.leave, GREY);
+      drawHoop(ctx, tr.leave, GREY, { net: tr.leaveNet });
       ctx.restore();
     }
     if (tr.arrive && (tr.arrive.a ?? 1) > 0.02) {
       ctx.save();
       ctx.globalAlpha = tr.arrive.a ?? 1;
-      drawHoop(ctx, tr.arrive, ORANGE);
+      drawHoop(ctx, tr.arrive, ORANGE, { net: tr.arriveNet });
       ctx.restore();
       if ((tr.arrive.a ?? 0) > 0.55 && tr.arriveTo) {
         drawStarIcon(
@@ -710,6 +571,7 @@ export function drawPitchFrame(
     if (tr.carry) {
       drawHoop(ctx, tr.carry, tr.carry.color ?? ORANGE, {
         withBall: true,
+        net: tr.carryNet,
         ballX: state.ball.x,
         ballY: state.ball.y,
         timeMs: state.timeMs,
@@ -724,11 +586,9 @@ export function drawPitchFrame(
     }
 
     if (state.source) {
-      // No aim-drag net stretch / yank diamonds — only rimHit wobble when the ball
-      // banks into the net (light settle). Aim still uses rubber-band + predict dots.
       drawHoop(ctx, state.source, GREY, {
         withBall: state.mode === "aim",
-        pullNet: false,
+        net: state.sourceNet,
         ballX: state.ball.x,
         ballY: state.ball.y,
         timeMs: state.timeMs,
@@ -739,6 +599,7 @@ export function drawPitchFrame(
     if (state.target) {
       drawHoop(ctx, state.target, ORANGE, {
         withBall: state.mode === "scored",
+        net: state.targetNet,
         ballX: state.ball.x,
         ballY: state.ball.y,
         timeMs: state.timeMs,

@@ -23,6 +23,13 @@ export {
   drawStarIcon,
   type PitchDrawState,
 } from "./pitchDraw";
+export {
+  makeNet,
+  kickNet,
+  stepNetFor,
+  isNearCord,
+  type VerletNet,
+} from "./netVerlet";
 export { spawnLaunchRings, updateTrailEffects } from "./trailEffects";
 export type {
   TrailParticle,
