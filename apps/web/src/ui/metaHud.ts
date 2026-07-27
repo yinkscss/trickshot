@@ -35,6 +35,7 @@ export class MetaHud {
         <p>Mobile-first chain dunks. Pick a mode.</p>
         <button type="button" data-mode="casual">Casual</button>
         <button type="button" data-mode="daily">Daily challenge</button>
+        <button type="button" data-mode="challenges">Challenges</button>
         <button type="button" data-mode="tournament" class="ghost">Tournament (no continues)</button>
       </div>
       <div class="meta-panel" id="meta-continue" hidden>
@@ -82,8 +83,10 @@ export class MetaHud {
   /** Stars are drawn on the canvas HUD — DOM chip removed to avoid a duplicate. */
   setStars(_n: number): void {}
 
-  setModeLabel(mode: GameMode): void {
-    this.modeLabelEl.textContent = mode.toUpperCase();
+  setModeLabel(mode: GameMode, detail?: string): void {
+    this.modeLabelEl.textContent = detail
+      ? `${mode.toUpperCase()} · ${detail}`
+      : mode.toUpperCase();
   }
 
   showModePicker(): void {
@@ -115,7 +118,10 @@ export class MetaHud {
     hint.hidden = !allowed;
     if (!allowed) {
       hint.hidden = false;
-      hint.textContent = "Tournament — continues disabled";
+      hint.textContent =
+        args.mode === "challenges"
+          ? "Challenges — tap / space to retry"
+          : "Tournament — continues disabled";
     } else {
       hint.textContent = "Sandbox stub — payments later";
     }
