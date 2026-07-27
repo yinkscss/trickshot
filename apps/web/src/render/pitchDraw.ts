@@ -62,6 +62,10 @@ export interface PitchDrawState {
   obstacles: Obstacle[];
   star: { x: number; y: number } | null;
   starOn: boolean;
+  /** Challenges pickup stars (multi). Endless soft-currency uses `star`/`starOn`. */
+  challengeStars?: ReadonlyArray<{ x: number; y: number; on: boolean }>;
+  /** Optional tip under the court (challenges level tip / miss prompt). */
+  tip?: string | null;
   drag: boolean;
   dragPt: { x: number; y: number } | null;
   aimOrigin: { x: number; y: number };
@@ -722,6 +726,13 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: PitchDrawState): void {
     ctx.fillStyle = ORANGE;
     ctx.fillText(state.comboChip, 20, top + 14);
   }
+
+  if (state.tip) {
+    ctx.font = "700 13px Nunito, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#8a909a";
+    ctx.fillText(state.tip, state.W / 2, state.H - 52 - state.safeBottom);
+  }
 }
 
 function drawComboFX(
@@ -869,7 +880,11 @@ export function drawPitchFrame(
   } else {
     drawObstacles(ctx, state.obstacles, state.timeMs);
 
-    if (state.starOn && state.star) {
+    if (state.challengeStars?.length) {
+      for (const s of state.challengeStars) {
+        if (s.on) drawStarIcon(ctx, s.x, s.y, 12, state.timeMs / 800);
+      }
+    } else if (state.starOn && state.star) {
       drawStarIcon(ctx, state.star.x, state.star.y, 12, state.timeMs / 800);
     }
 
