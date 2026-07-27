@@ -41,6 +41,14 @@ const EXPECTED_MATRIX: Record<
     allowsSoftCurrencyStars: true,
     globalBoard: "tournament",
   },
+  challenges: {
+    mode: "challenges",
+    allowsContinues: false,
+    allowsPowerups: false,
+    seedSource: "per_run",
+    allowsSoftCurrencyStars: false,
+    globalBoard: "optional",
+  },
 };
 
 describe("getModeRules matrix", () => {

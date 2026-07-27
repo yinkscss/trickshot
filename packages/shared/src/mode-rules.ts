@@ -54,6 +54,14 @@ const MODE_RULES: Record<GameMode, ModeRules> = {
     allowsSoftCurrencyStars: true,
     globalBoard: "tournament",
   },
+  challenges: {
+    mode: "challenges",
+    allowsContinues: false,
+    allowsPowerups: false,
+    seedSource: "per_run",
+    allowsSoftCurrencyStars: false,
+    globalBoard: "optional",
+  },
 };
 
 /** Locked mode rules matrix — mirrors `GameEconomics` / `docs/STACK_LOCK.md`. */
@@ -62,7 +70,12 @@ export function getModeRules(mode: GameMode): ModeRules {
 }
 
 /** All modes for exhaustive table tests and contract parity checks. */
-export const GAME_MODES = ["casual", "daily", "tournament"] as const satisfies readonly GameMode[];
+export const GAME_MODES = [
+  "casual",
+  "daily",
+  "tournament",
+  "challenges",
+] as const satisfies readonly GameMode[];
 
 export function assertCanContinue(mode: GameMode): void {
   const rules = getModeRules(mode);

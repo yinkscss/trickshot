@@ -13,7 +13,12 @@ export const INPUT_LOG_MAX_BYTES = 512 * 1024;
 /** Hard cap on frame count before truncation. */
 export const INPUT_LOG_MAX_FRAMES = 4096;
 
-export const gameModeSchema = z.enum(["casual", "daily", "tournament"]);
+export const gameModeSchema = z.enum([
+  "casual",
+  "daily",
+  "tournament",
+  "challenges",
+]);
 
 export const inputLogFrameTypeSchema = z.enum([
   "pointer_down",
