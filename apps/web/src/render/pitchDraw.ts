@@ -195,6 +195,7 @@ function drawHoop(
   opts: {
     withBall?: boolean;
     net?: VerletNet | null;
+    pull?: PitchPull | null;
     ballX?: number;
     ballY?: number;
     timeMs?: number;
@@ -203,13 +204,25 @@ function drawHoop(
 ): void {
   const { withBall = false, net = null } = opts;
   const { x, y, ang } = h;
+  const pull = opts.pull ?? { lx: 0, ly: 0, amt: 0 };
+  // Tip the rim in place around its stationary center (animation-pitch tipAng).
+  const tip = pull.amt * 0.22;
+  const tipAng = ang + Math.atan2(pull.lx, 40) * tip;
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(ang);
+  ctx.rotate(tipAng);
 
   ctx.beginPath();
-  ctx.ellipse(2, 12, RX * 0.95, RY * 1.1, 0, 0, Math.PI * 2);
+  ctx.ellipse(
+    2 + pull.lx * pull.amt * 0.04,
+    12 + pull.ly * pull.amt * 0.04,
+    RX * 0.95,
+    RY * 1.1,
+    0,
+    0,
+    Math.PI * 2,
+  );
   ctx.fillStyle = "rgba(0,0,0,0.09)";
   ctx.fill();
 
@@ -221,7 +234,8 @@ function drawHoop(
   if (withBall) {
     const bx = opts.ballX ?? x;
     const by = opts.ballY ?? y;
-    const L = hoopLocal({ x, y, ang, wobble: h.wobble ?? 0 }, bx, by);
+    // Ball nesting uses physics ang; tip is cosmetic lean only.
+    const L = hoopLocal({ x, y, ang: tipAng, wobble: h.wobble ?? 0 }, bx, by);
     drawFireAura(ctx, L.x, L.y, BR, opts.timeMs ?? 0, opts.combo ?? 0);
     drawMarble(ctx, L.x, L.y, BR);
   }
@@ -892,6 +906,7 @@ export function drawPitchFrame(
       drawHoop(ctx, state.source, GREY, {
         withBall: state.mode === "aim",
         net: state.sourceNet,
+        pull: state.mode === "aim" ? state.sourcePull : null,
         ballX: state.ball.x,
         ballY: state.ball.y,
         timeMs: state.timeMs,
