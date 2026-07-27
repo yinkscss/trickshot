@@ -14,7 +14,7 @@ import {
   type ScoreState,
   type Side,
 } from "@trickshot/logic";
-import { PHYSICS_BUILD_ID } from "@trickshot/physics";
+import { COURT_H, COURT_W, PHYSICS_BUILD_ID } from "@trickshot/physics";
 import type { GameMode } from "@trickshot/shared";
 import { makeHoop } from "./layout";
 import {
@@ -125,8 +125,9 @@ export class PlayLoop {
   /** DEV screenshot pose — freezes sim and drives visualMode. */
   private poseOverride: VisualMode | null = null;
 
-  private W = 390;
-  private H = 780;
+  /** Fixed logical court — never adopt container pixel size as physics space. */
+  private readonly W = COURT_W;
+  private readonly H = COURT_H;
   private raf = 0;
   private lastTs = 0;
   private running = false;
@@ -209,20 +210,15 @@ export class PlayLoop {
   }
 
   resize(): void {
-    const prevW = this.W;
-    const prevH = this.H;
     this.syncSize();
-    if (this.runFsm.runState === "aiming" && prevW > 0 && prevH > 0) {
-      this.place(this.runFsm.state.score, false);
-    }
   }
 
   private syncSize(): void {
     const host = this.canvas.parentElement ?? this.canvas;
     const rect = host.getBoundingClientRect();
-    this.W = Math.max(1, Math.floor(rect.width));
-    this.H = Math.max(1, Math.floor(rect.height));
-    this.pitch.resize(this.W, this.H);
+    const viewW = Math.max(1, Math.floor(rect.width));
+    const viewH = Math.max(1, Math.floor(rect.height));
+    this.pitch.resize(viewW, viewH);
   }
 
   private pointerCourt(clientX: number, clientY: number): Vec2 {

@@ -1,6 +1,8 @@
 /** Re-export core integrator from workspace package; web-only collision modules stay local. */
 export {
   BALL_RADIUS,
+  COURT_H,
+  COURT_W,
   FIXED_DT,
   FLIGHT_EPSILON,
   G,

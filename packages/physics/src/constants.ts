@@ -1,5 +1,9 @@
 /** Pitch-parity physics constants from docs/animation-pitch.html */
 
+/** Fixed logical court — matches docs/challenges-pitch.html (W×H). */
+export const COURT_W = 390;
+export const COURT_H = 780;
+
 export const G = 2000;
 export const BALL_RADIUS = 15;
 export const RIM_RX = 40;

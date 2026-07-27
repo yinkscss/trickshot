@@ -1,13 +1,18 @@
+import { COURT_H, COURT_W, clamp } from "../physics";
+import { COURT } from "./colors";
 import { drawPitchFrame, type PitchDrawState } from "./pitchDraw";
 
 /**
  * Direct Canvas2D renderer — draws pitch frames onto the visible `<canvas>`.
- * No Phaser blit / CanvasTexture.
+ * Canvas fills the container; gameplay is letterboxed into a fixed logical court.
  */
 export class DirectCanvasRenderer {
   private dpr = 1;
-  private W = 390;
-  private H = 780;
+  private viewW = COURT_W;
+  private viewH = COURT_H;
+  private viewScale = 1;
+  private viewOffX = 0;
+  private viewOffY = 0;
   private readonly ctx: CanvasRenderingContext2D;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -18,29 +23,43 @@ export class DirectCanvasRenderer {
     this.ctx = ctx;
   }
 
-  resize(W: number, H: number): void {
-    this.W = Math.max(1, Math.floor(W));
-    this.H = Math.max(1, Math.floor(H));
+  /** Size the backing store to the container and recompute letterbox. */
+  resize(viewW: number, viewH: number): void {
+    this.viewW = Math.max(1, Math.floor(viewW));
+    this.viewH = Math.max(1, Math.floor(viewH));
     this.dpr = Math.min(
       typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
       2,
     );
-    const pw = Math.max(1, (this.W * this.dpr) | 0);
-    const ph = Math.max(1, (this.H * this.dpr) | 0);
+    const pw = Math.max(1, (this.viewW * this.dpr) | 0);
+    const ph = Math.max(1, (this.viewH * this.dpr) | 0);
     if (this.canvas.width !== pw || this.canvas.height !== ph) {
       this.canvas.width = pw;
       this.canvas.height = ph;
     }
+    this.viewScale = Math.min(this.viewW / COURT_W, this.viewH / COURT_H);
+    this.viewOffX = (this.viewW - COURT_W * this.viewScale) / 2;
+    this.viewOffY = (this.viewH - COURT_H * this.viewScale) / 2;
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
 
   get size(): { W: number; H: number } {
-    return { W: this.W, H: this.H };
+    return { W: COURT_W, H: COURT_H };
   }
 
   render(state: PitchDrawState): void {
+    // Letterbox first, then work entirely in logical court units (pitch parity).
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    this.ctx.clearRect(0, 0, this.W, this.H);
+    this.ctx.fillStyle = COURT;
+    this.ctx.fillRect(0, 0, this.viewW, this.viewH);
+    this.ctx.setTransform(
+      this.dpr * this.viewScale,
+      0,
+      0,
+      this.dpr * this.viewScale,
+      this.dpr * this.viewOffX,
+      this.dpr * this.viewOffY,
+    );
     drawPitchFrame(this.ctx, state);
   }
 
@@ -73,19 +92,31 @@ export function safeBottomInset(): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Map pointer client coords → logical court pixels. */
+/**
+ * Map pointer client coords → logical court pixels.
+ * Inverts the letterbox transform from DirectCanvasRenderer / challenges-pitch ptr().
+ */
 export function clientToCourt(
   canvas: HTMLCanvasElement,
   clientX: number,
   clientY: number,
-  W: number,
-  H: number,
+  courtW: number = COURT_W,
+  courtH: number = COURT_H,
 ): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();
   const rw = Math.max(1, rect.width);
   const rh = Math.max(1, rect.height);
+  const viewW = rw;
+  const viewH = rh;
+  const viewScale = Math.min(viewW / courtW, viewH / courtH);
+  const viewOffX = (viewW - courtW * viewScale) / 2;
+  const viewOffY = (viewH - courtH * viewScale) / 2;
+  const x =
+    ((clientX - rect.left) * (viewW / rw) - viewOffX) / viewScale;
+  const y =
+    ((clientY - rect.top) * (viewH / rh) - viewOffY) / viewScale;
   return {
-    x: ((clientX - rect.left) / rw) * W,
-    y: ((clientY - rect.top) / rh) * H,
+    x: clamp(x, 0, courtW),
+    y: clamp(y, 0, courtH),
   };
 }
