@@ -37,6 +37,7 @@ export {
   inputLogFrameSchema,
   inputLogFrameTypeSchema,
   inputLogSchema,
+  isContinueForbiddenCode,
   parseInputLog,
   serializeInputLog,
   validateInputLog,
