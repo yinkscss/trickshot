@@ -60,7 +60,7 @@ See [animation-pitch.html](./animation-pitch.html):
 1. Zigzag climb (source low ↔ goal high, alternate every dunk)
 2. Drag stretches the **net** (ball seated); aim preview matches flight including wall banks
 3. Left/right screen edges bounce the ball
-4. Endless modes keep **0–1** procedural obstacle per shot; challenges mode may use authored multi-obstacle layouts (up to 4)
+4. Endless modes keep **0–1** procedural obstacle per shot (kit types unlock by score, then RNG pick); challenges mode may use authored multi-obstacle layouts (up to 4)
 5. Seamless dunk → next-loop (carry hoop down, no hard teleport)
 6. Combo juice on chain (x2 / x3 / ON FIRE)
 
