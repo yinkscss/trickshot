@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createRng, dailySeedFromUtcDate } from "./rng.js";
 import {
+  ENDLESS_OBSTACLE_UNLOCK_ORDER,
   buildObstacles,
   generateShotLayout,
   layoutForSide,
   nextSide,
   shotRng,
+  unlockedObstacleTypes,
   type Side,
 } from "./shot-layout.js";
 
@@ -109,18 +111,36 @@ describe("obstacle count invariant", () => {
     }
   });
 
-  it("Alpha types are only wall peg or bumper disc", () => {
-    for (let score = 1; score <= 12; score++) {
+  it("unlocks kit types by score and randomizes among them", () => {
+    assert.deepEqual(unlockedObstacleTypes(0), []);
+    assert.deepEqual(unlockedObstacleTypes(1), ["wall", "bumper"]);
+    assert.deepEqual(unlockedObstacleTypes(2), ["wall", "bumper", "gate"]);
+    assert.equal(unlockedObstacleTypes(11).length, 12);
+    assert.deepEqual(
+      unlockedObstacleTypes(20),
+      [...ENDLESS_OBSTACLE_UNLOCK_ORDER],
+    );
+
+    const seen = new Set<string>();
+    for (let i = 0; i < 200; i++) {
       const [o] = generateShotLayout({
         side: 1,
-        score,
-        seed: TEST_SEED,
+        score: 11,
+        seed: `mix-${i}`,
         mode: "casual",
         width: W,
         height: H,
       }).obstacles;
-      assert.ok(o.type === "wall" || o.type === "bumper");
+      assert.ok(o);
+      seen.add(o.type);
+      assert.ok(
+        (ENDLESS_OBSTACLE_UNLOCK_ORDER as readonly string[]).includes(o.type),
+      );
     }
+    assert.ok(
+      seen.size >= 8,
+      `expected broad type mix at score 11, got ${[...seen].join(",")}`,
+    );
   });
 });
 
@@ -147,8 +167,9 @@ describe("zigzag side alternation", () => {
 
 describe("buildObstacles escalation", () => {
   it("hard scores (≥4) produce taller walls when RNG selects wall", () => {
+    // next() < 1/n picks index 0 (wall) from the unlocked list
     const forceWall = {
-      next: () => 0.1,
+      next: () => 0.01,
       range: (min: number) => min,
       shuffle: <T>(items: readonly T[]) => [...items],
     };
@@ -161,6 +182,7 @@ describe("buildObstacles escalation", () => {
       5,
       W,
       forceWall,
+      H,
     );
     assert.equal(hard.length, 1);
     assert.equal(hard[0]!.type, "wall");
@@ -171,10 +193,12 @@ describe("buildObstacles escalation", () => {
       H * 0.68,
       W * 0.78,
       H * 0.29,
-      2,
+      1,
       W,
       forceWall,
+      H,
     );
+    assert.equal(soft[0]!.type, "wall");
     assert.equal((soft[0] as { h: number }).h, 90);
   });
 

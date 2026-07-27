@@ -36,12 +36,15 @@ export {
 } from "./input-log-replay.js";
 
 export {
+  ENDLESS_OBSTACLE_UNLOCK_ORDER,
   buildObstacles,
   generateShotLayout,
   layoutForSide,
   nextSide,
   shotRng,
+  unlockedObstacleTypes,
   type BumperObstacle,
+  type EndlessObstacleType,
   type GenerateShotLayoutInput,
   type HoopPose,
   type Obstacle,
