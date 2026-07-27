@@ -36,6 +36,7 @@ import {
   rimHit,
   stepProjectileSubsteps,
   throughHoop,
+  updateObstacles,
   type AimVector,
   type Hoop,
   type Obstacle,
@@ -113,6 +114,8 @@ export class PlayLoop {
   private carryNet: VerletNet | null = null;
   private arriveNet: VerletNet | null = null;
   private obstacles: Obstacle[] = [];
+  /** Accumulated sim time for obstacle kinematics (never performance.now). */
+  private worldT = 0;
   private transition: DunkTransition | null = null;
   private ball: Projectile = { x: 0, y: 0, vx: 0, vy: 0 };
   private aimOrigin: Vec2 = { x: 0, y: 0 };
@@ -336,6 +339,8 @@ export class PlayLoop {
     this.source = makeHoop(L.source.x, L.source.y, L.source.ang);
     this.target = makeHoop(L.goal.x, L.goal.y, L.goal.ang);
     this.obstacles = L.obstacles.map((o) => ({ ...o }));
+    this.worldT = 0;
+    updateObstacles(this.worldT, this.obstacles, 0);
     this.ball.x = L.source.x;
     this.ball.y = L.source.y - 1;
     this.ball.vx = 0;
@@ -595,6 +600,10 @@ export class PlayLoop {
     if (this.source) this.source.wobble *= Math.pow(0.04, dt);
     if (this.target) this.target.wobble *= Math.pow(0.06, dt);
 
+    // Keep obstacle kinematics / bumper pulse on the sim clock (pitch parity).
+    this.worldT += dt;
+    updateObstacles(this.worldT, this.obstacles, dt);
+
     if (this.runFsm.runState === "aiming" && this.source) {
       this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
       this.ball.x = this.aimOrigin.x;
@@ -617,10 +626,12 @@ export class PlayLoop {
       stepProjectileSubsteps(this.ball, dt, this.W);
       if (this.source) rimHit(this.source, this.ball);
       if (this.target) rimHit(this.target, this.ball);
-      collideObstacles(this.obstacles, this.ball, dt);
+      const hazard = collideObstacles(this.obstacles, this.ball, dt);
       this.tryCollectStar();
 
-      if (this.target && throughHoop(this.target, this.ball)) {
+      if (hazard === "dead") {
+        this.dispatchMiss();
+      } else if (this.target && throughHoop(this.target, this.ball)) {
         this.onScore(time);
       } else if (
         this.ball.y > this.H + 90 ||
@@ -705,6 +716,8 @@ export class PlayLoop {
     this.carryNet = null;
     this.arriveNet = null;
     this.obstacles = next.obstacles;
+    this.worldT = 0;
+    updateObstacles(this.worldT, this.obstacles, 0);
     this.ball = next.ball;
     this.aimOrigin = next.aimOrigin;
     this.transition = null;

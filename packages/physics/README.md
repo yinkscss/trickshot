@@ -41,11 +41,11 @@ All positions and velocities are **world pixels** — the same space Phaser uses
 | `walls` | `applyWallBounce`, `collideScreenEdges`, `edgePad` |
 | `aim` | `aimFrom`, `netPullForHoop`, `launchFromPull`, `predictPath` |
 | `hoop` | `hoopLocal`, `throughHoop`, `rimHit` |
-| `obstacles` | `collideObstacles`, `segmentBounce`, `MAX_LIVE_OBSTACLES` |
+| `obstacles` | `updateObstacles`, `collideObstacles`, `segmentBounce`, `laserOn`, `MAX_LIVE_OBSTACLES` |
 | `constants` | `G`, `FIXED_DT`, `BALL_RADIUS`, … |
-| `types` | `Projectile`, `Vec2`, `Hoop`, `Obstacle`, … |
+| `types` | `Projectile`, `Vec2`, `Hoop`, `Obstacle` (12 kit types), `Seg`, … |
 
-Obstacle collision (wall peg + bumper disc) and hoop rim/through probes live here for Node replay (#18–#19).
+Obstacle collision (full challenges kit) and hoop rim/through probes live here for Node replay (#18–#19).
 
 ## Net-pull launch
 
@@ -61,14 +61,22 @@ Obstacle collision (wall peg + bumper disc) and hoop rim/through probes live her
 
 ## Flight tick ordering (pitch parity)
 
-Each flying frame in the web client (and server replay) should run probes in this order:
+Moving obstacles are driven by accumulated sim time `world.t` (never `performance.now()`).
+For deterministic flight with kinematics, advance with `FIXED_DT` sub-steps:
 
-1. **`stepProjectileSubsteps`** — gravity + L/R screen walls (integrator)
-2. **`rimHit(source)`**, **`rimHit(target)`** — rim elastic bounce
-3. **`collideObstacles`** — single live obstacle (#18)
-4. **`throughHoop(target)`** — if true, dispatch `throughHoop` to RunFSM → scored
+```ts
+world.t += FIXED_DT;
+updateObstacles(world.t, obstacles, FIXED_DT); // rebuild segs / movers
+stepProjectile(ball, FIXED_DT, worldWidth);    // gravity + L/R walls
+rimHit(source, ball);
+rimHit(target, ball);
+const hazard = collideObstacles(obstacles, ball, FIXED_DT); // may return "dead"
+if (throughHoop(target, ball)) { /* score */ }
+```
 
-Aim preview (`predictPath`) omits steps 2–4. While `mode=aiming`, the ball never integrates as a free projectile.
+Endless mode still uses 0–1 procedural wall/bumper; challenges may author up to
+`MAX_LIVE_OBSTACLES` (4). Aim preview (`predictPath`) omits rim/obstacle probes.
+While `mode=aiming`, keep calling `updateObstacles` so movers animate on the shot clock.
 
 ## Aim preview vs obstacles
 

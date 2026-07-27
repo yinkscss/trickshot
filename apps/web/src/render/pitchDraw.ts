@@ -9,8 +9,21 @@ import {
   hoopLocal,
   type Obstacle,
   type PredictDot,
+  type Seg,
 } from "../physics";
-import { COURT, CYAN, GREY, ORANGE, RED, STAR, STAR_LINE } from "./colors";
+import {
+  COURT,
+  CYAN,
+  GLASS,
+  GREEN,
+  GREY,
+  LASER,
+  ORANGE,
+  RED,
+  STAR,
+  STAR_LINE,
+  VIOLET,
+} from "./colors";
 import {
   drawMouthShade,
   drawNetHalf,
@@ -259,6 +272,10 @@ export function drawStarIcon(
   ctx.restore();
 }
 
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(1, v));
+}
+
 function roundCapBar(
   ctx: CanvasRenderingContext2D,
   x0: number,
@@ -267,7 +284,17 @@ function roundCapBar(
   y1: number,
   thick: number,
   color: string,
+  glow?: string,
 ): void {
+  if (glow) {
+    ctx.strokeStyle = glow;
+    ctx.lineWidth = thick + 8;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+  }
   ctx.strokeStyle = color;
   ctx.lineWidth = thick;
   ctx.lineCap = "round";
@@ -283,28 +310,289 @@ function roundCapBar(
   ctx.stroke();
 }
 
+function drawDisc(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  color: string,
+  pulse: number,
+  timeMs: number,
+): void {
+  const p = 1 + Math.sin(timeMs / 180) * 0.04 + (pulse || 0) * 0.15;
+  ctx.beginPath();
+  ctx.arc(x, y, r * p, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.45 * p, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.18, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  ctx.fill();
+}
+
+function drawPortalRing(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  color: string,
+  spin: number,
+): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(spin);
+  ctx.fillStyle =
+    color === CYAN ? "rgba(78,203,255,0.16)" : "rgba(255,94,168,0.16)";
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3.4;
+  ctx.setLineDash([r * 0.7, r * 0.45]);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.6;
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.62, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function wallSegs(o: Extract<Obstacle, { type: "wall" }>): Seg[] {
+  if (o.segs?.length) return o.segs;
+  return [[o.x, o.y - o.h / 2, o.x, o.y + o.h / 2]];
+}
+
+/** Pitch `drawObstacles` — all 12 kit types. Visual flow uses timeMs (not physics clock). */
 function drawObstacles(
   ctx: CanvasRenderingContext2D,
   obstacles: Obstacle[],
   timeMs: number,
 ): void {
+  const perfT = timeMs / 1000;
   for (const o of obstacles) {
-    if (o.type === "wall") {
-      roundCapBar(ctx, o.x, o.y - o.h / 2, o.x, o.y + o.h / 2, o.w, RED);
+    if (o.type === "wall" || o.type === "gate") {
+      const thick = o.type === "wall" ? o.w : o.thick;
+      const segs = o.type === "wall" ? wallSegs(o) : o.segs ?? [];
+      for (const s of segs) {
+        roundCapBar(ctx, s[0], s[1], s[2], s[3], thick, RED);
+      }
+      if (o.type === "gate") {
+        const c = Math.cos(o.ang);
+        const s = Math.sin(o.ang);
+        ctx.strokeStyle = "rgba(229,57,32,0.22)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 5]);
+        ctx.beginPath();
+        ctx.moveTo(o.x - (c * o.gap) / 2, o.y - (s * o.gap) / 2);
+        ctx.lineTo(o.x + (c * o.gap) / 2, o.y + (s * o.gap) / 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
     } else if (o.type === "bumper") {
-      const p = 1 + Math.sin(timeMs / 180) * 0.04 + (o.pulse || 0) * 0.15;
+      drawDisc(ctx, o.x, o.y, o.r, RED, o.pulse, timeMs);
+    } else if (o.type === "orbiter") {
       ctx.beginPath();
-      ctx.arc(o.x, o.y, o.r * p, 0, Math.PI * 2);
-      ctx.fillStyle = RED;
-      ctx.fill();
+      ctx.arc(o.x, o.y, o.rad, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(124,77,255,0.22)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawDisc(ctx, o.cx ?? o.x, o.cy ?? o.y, o.r, VIOLET, o.pulse, timeMs);
+    } else if (o.type === "spinner") {
+      const s = o.segs?.[0];
+      if (!s) continue;
+      roundCapBar(ctx, s[0], s[1], s[2], s[3], o.thick, VIOLET);
       ctx.beginPath();
-      ctx.arc(o.x, o.y, o.r * 0.45 * p, 0, Math.PI * 2);
+      ctx.arc(o.x, o.y, 5, 0, Math.PI * 2);
       ctx.fillStyle = "#fff";
       ctx.fill();
+    } else if (o.type === "pendulum") {
       ctx.beginPath();
-      ctx.arc(o.x - o.r * 0.25, o.y - o.r * 0.25, o.r * 0.18, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.arc(o.x, o.y, o.len, Math.PI / 2 - o.amp, Math.PI / 2 + o.amp);
+      ctx.strokeStyle = "rgba(124,77,255,0.16)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const tipX = o.tipX ?? o.x;
+      const tipY = o.tipY ?? o.y + o.len;
+      roundCapBar(ctx, o.x, o.y, tipX, tipY, o.thick, VIOLET);
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, o.thick * 0.95, 0, Math.PI * 2);
+      ctx.fillStyle = VIOLET;
       ctx.fill();
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#42465a";
+      ctx.fill();
+    } else if (o.type === "slider") {
+      const s = o.segs?.[0];
+      ctx.strokeStyle = "rgba(124,77,255,0.16)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      if (o.axis === "x") {
+        ctx.moveTo(o.x - o.range - o.len / 2, o.y);
+        ctx.lineTo(o.x + o.range + o.len / 2, o.y);
+      } else {
+        ctx.moveTo(o.x, o.y - o.range - o.len / 2);
+        ctx.lineTo(o.x, o.y + o.range + o.len / 2);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (s) roundCapBar(ctx, s[0], s[1], s[2], s[3], o.thick, VIOLET);
+    } else if (o.type === "conveyor") {
+      const s = o.segs?.[0];
+      if (!s) continue;
+      roundCapBar(ctx, s[0], s[1], s[2], s[3], o.thick, GREEN);
+      const c = Math.cos(o.ang);
+      const sn = Math.sin(o.ang);
+      const flow = (perfT * 0.55) % 1;
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      for (let k = 0; k < 4; k++) {
+        const u = ((k / 4 + flow) % 1) * 2 - 1;
+        const px = o.x + c * u * o.len;
+        const py = o.y + sn * u * o.len;
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(o.ang);
+        ctx.beginPath();
+        ctx.moveTo(4, 0);
+        ctx.lineTo(-3, -3.4);
+        ctx.lineTo(-3, 3.4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    } else if (o.type === "wind") {
+      const x0 = o.x - o.w / 2;
+      const y0 = o.y - o.hh / 2;
+      ctx.fillStyle = "rgba(78,203,255,0.10)";
+      ctx.fillRect(x0, y0, o.w, o.hh);
+      ctx.strokeStyle = "rgba(78,203,255,0.35)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 5]);
+      ctx.strokeRect(x0, y0, o.w, o.hh);
+      ctx.setLineDash([]);
+      const dir = Math.atan2(o.ay, o.ax);
+      const flow = (perfT * 0.42) % 1;
+      ctx.strokeStyle = "rgba(78,203,255,0.55)";
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = "round";
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 3; c++) {
+          const u = (c / 3 + flow) % 1;
+          const px = x0 + (Math.cos(dir) >= 0 ? u : 1 - u) * o.w;
+          const py = y0 + ((r + 0.5) / 4) * o.hh;
+          ctx.beginPath();
+          ctx.moveTo(px - Math.cos(dir) * 7, py - Math.sin(dir) * 7);
+          ctx.lineTo(px + Math.cos(dir) * 7, py + Math.sin(dir) * 7);
+          ctx.stroke();
+        }
+      }
+    } else if (o.type === "glass") {
+      if (!o.broken) {
+        const s = o.segs?.[0];
+        if (!s) continue;
+        ctx.strokeStyle = "rgba(143,203,255,0.55)";
+        ctx.lineWidth = o.thick + 6;
+        ctx.lineCap = "butt";
+        ctx.beginPath();
+        ctx.moveTo(s[0], s[1]);
+        ctx.lineTo(s[2], s[3]);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.85)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(s[0], s[1]);
+        ctx.lineTo(s[2], s[3]);
+        ctx.stroke();
+        const c = Math.cos(o.ang);
+        const sn = Math.sin(o.ang);
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.lineWidth = 1.4;
+        for (let k = -2; k <= 2; k++) {
+          const u = (k / 2.4) * (o.len / 2);
+          ctx.beginPath();
+          ctx.moveTo(o.x + c * u - sn * 6, o.y + sn * u + c * 6);
+          ctx.lineTo(
+            o.x + c * (u + 8) + sn * 6,
+            o.y + sn * (u + 8) - c * 6,
+          );
+          ctx.stroke();
+        }
+      } else if (o.shatter < 1) {
+        const c = Math.cos(o.ang);
+        const sn = Math.sin(o.ang);
+        ctx.globalAlpha = 1 - o.shatter;
+        ctx.fillStyle = GLASS;
+        for (let k = 0; k < 10; k++) {
+          const u = ((k / 9) * 2 - 1) * (o.len / 2);
+          const d = o.shatter * (18 + (k % 3) * 10);
+          ctx.beginPath();
+          ctx.arc(
+            o.x + c * u - sn * d * (k % 2 ? 1 : -1),
+            o.y + sn * u + c * d * (k % 2 ? 1 : -1),
+            3.2,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    } else if (o.type === "portal") {
+      drawPortalRing(ctx, o.x, o.y, o.r, CYAN, o.spin);
+      drawPortalRing(ctx, o.ex, o.ey, o.r, "#ff5ea8", -o.spin);
+    } else if (o.type === "laser") {
+      const s = o.segs?.[0];
+      if (!s) continue;
+      const cyc = o.on + o.off;
+      const phase = (((perfT + o.phase) % cyc) + cyc) % cyc;
+      const live = o.live ?? phase < o.on;
+      if (live) {
+        const warm = clamp01(phase / 0.12);
+        roundCapBar(
+          ctx,
+          s[0],
+          s[1],
+          s[2],
+          s[3],
+          o.thick * warm,
+          LASER,
+          `rgba(255,45,85,${0.22 * warm})`,
+        );
+      } else {
+        const arming = clamp01((phase - o.on) / o.off);
+        ctx.strokeStyle = `rgba(255,45,85,${0.14 + arming * 0.3})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 5]);
+        ctx.beginPath();
+        ctx.moveTo(s[0], s[1]);
+        ctx.lineTo(s[2], s[3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      for (const e of [
+        [s[0], s[1]],
+        [s[2], s[3]],
+      ] as const) {
+        ctx.beginPath();
+        ctx.arc(e[0], e[1], 5.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#3a3f4d";
+        ctx.fill();
+      }
     }
   }
 }

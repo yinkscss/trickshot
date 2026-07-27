@@ -6,6 +6,11 @@ export const CYAN = "#4ecbff";
 export const STAR = "#ffc400";
 export const STAR_LINE = "#ff9800";
 export const RED = "#e53920";
+/** Challenges kit — docs/challenges-pitch.html */
+export const VIOLET = "#7c4dff";
+export const GREEN = "#00b894";
+export const GLASS = "#8fcbff";
+export const LASER = "#ff2d55";
 
 /** @deprecated use STAR */
 export const STAR_FILL = STAR;
