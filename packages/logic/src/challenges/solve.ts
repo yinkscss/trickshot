@@ -115,6 +115,14 @@ function warmWorld(world: ChallengeWorld, warmSeconds: number): void {
   }
 }
 
+function requireChallengeLevel(idx: number, fn: string): ChallengeLevel {
+  const level = LEVELS[idx];
+  if (!level) {
+    throw new Error(`${fn}: no level at index ${idx}`);
+  }
+  return level;
+}
+
 /** Sweep aim space for one level — pitch `solve`. */
 export function solveLevel(
   idx: number,
@@ -125,10 +133,7 @@ export function solveLevel(
   const phases = options.phases ?? SOLVE_PHASES;
   const w = options.w ?? COURT_W;
   const h = options.h ?? COURT_H;
-  const level = LEVELS[idx];
-  if (!level) {
-    throw new Error(`solveLevel: no level at index ${idx}`);
-  }
+  const level = requireChallengeLevel(idx, "solveLevel");
 
   let hits = 0;
   let starHits = 0;
@@ -191,7 +196,7 @@ export function challengePath(
   w: number = COURT_W,
   h: number = COURT_H,
 ): { trace: Array<[number, number]>; w: number; h: number } {
-  const level: ChallengeLevel = LEVELS[idx];
+  const level = requireChallengeLevel(idx, "challengePath");
   const world = makeWorld(level, w, h);
   warmWorld(world, warm);
   const a = (angDeg * Math.PI) / 180;
@@ -209,7 +214,8 @@ export function probe(
   w: number = COURT_W,
   h: number = COURT_H,
 ): SimResult {
-  const world = makeWorld(LEVELS[idx], w, h);
+  const level = requireChallengeLevel(idx, "probe");
+  const world = makeWorld(level, w, h);
   warmWorld(world, warm);
   const a = (angDeg * Math.PI) / 180;
   return runSim(world, Math.cos(a) * pow, Math.sin(a) * pow);
