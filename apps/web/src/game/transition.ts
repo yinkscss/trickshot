@@ -4,6 +4,7 @@ import {
   type Obstacle,
   type ShotLayout,
 } from "@trickshot/logic";
+import type { GameMode } from "@trickshot/shared";
 import { makeHoop } from "./layout";
 import type { Hoop, Projectile } from "../physics";
 
@@ -55,7 +56,7 @@ export function beginDunkTransition(args: {
   side: number;
   score: number;
   seed: string | number;
-  mode: "casual" | "daily" | "tournament";
+  mode: GameMode;
   width: number;
   height: number;
   source: Hoop;

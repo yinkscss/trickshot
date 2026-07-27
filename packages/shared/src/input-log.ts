@@ -13,7 +13,12 @@ export const INPUT_LOG_MAX_BYTES = 512 * 1024;
 /** Hard cap on frame count before truncation. */
 export const INPUT_LOG_MAX_FRAMES = 4096;
 
-export const gameModeSchema = z.enum(["casual", "daily", "tournament"]);
+export const gameModeSchema = z.enum([
+  "casual",
+  "daily",
+  "tournament",
+  "challenges",
+]);
 
 export const inputLogFrameTypeSchema = z.enum([
   "pointer_down",
@@ -65,10 +70,23 @@ export interface InputLogValidationError {
   code:
     | "invalid_schema"
     | "unsupported_version"
+    /** Mode-neutral: any mode with `allowsContinues: false`. */
+    | "continue_forbidden"
+    /**
+     * @deprecated Prefer `continue_forbidden`. Kept so existing consumers that
+     * match this string still typecheck; validators no longer emit it.
+     */
     | "tournament_continue"
     | "oversized"
     | "client_score";
   message: string;
+}
+
+/** True for forbidden-continue validation codes (current + legacy alias). */
+export function isContinueForbiddenCode(
+  code: InputLogValidationError["code"],
+): boolean {
+  return code === "continue_forbidden" || code === "tournament_continue";
 }
 
 export type InputLogValidationResult =
@@ -80,7 +98,7 @@ export function parseInputLog(raw: unknown): InputLog {
   return inputLogSchema.parse(raw);
 }
 
-/** Server-side validator — rejects unknown version, tournament continues, client score. */
+/** Server-side validator — rejects unknown version, forbidden continues, client score. */
 export function validateInputLog(raw: unknown): InputLogValidationResult {
   const version =
     typeof raw === "object" && raw !== null && "version" in raw
@@ -139,7 +157,7 @@ export function validateInputLog(raw: unknown): InputLogValidationResult {
     const illegal = log.frames.some((f) => f.type === "continue_accept");
     if (illegal) {
       errors.push({
-        code: "tournament_continue",
+        code: "continue_forbidden",
         message: `${log.mode} logs cannot contain continue_accept events`,
       });
     }

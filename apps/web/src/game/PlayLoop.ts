@@ -1,20 +1,34 @@
 import {
+  FLIGHT_TIMEOUT,
+  LEVELS,
   RunFSM,
   allowsContinue,
   buildRunSummary,
   comboLabel,
   createInputLogRecorder,
   createScoreState,
+  isChallengeUnlocked,
+  loadChallengesProgress,
+  makeWorld,
+  recordChallengeClear,
   resolveRunSeed,
   generateShotLayout,
   reduceScoreEvent,
+  saveChallengesProgress,
   shotRng,
+  stepChallengeWorld,
+  type ChallengeStar,
   type InputLogRecorder,
   type PhysicsIntent,
   type ScoreState,
   type Side,
 } from "@trickshot/logic";
-import { COURT_H, COURT_W, PHYSICS_BUILD_ID } from "@trickshot/physics";
+import {
+  COURT_H,
+  COURT_W,
+  FIXED_DT,
+  PHYSICS_BUILD_ID,
+} from "@trickshot/physics";
 import type { GameMode } from "@trickshot/shared";
 import { makeHoop } from "./layout";
 import {
@@ -128,12 +142,29 @@ export class PlayLoop {
   /** DEV screenshot pose — freezes sim and drives visualMode. */
   private poseOverride: VisualMode | null = null;
 
+  /** Challenges session — when set, endless zigzag / dunk transition is bypassed. */
+  private challengeActive = false;
+  private challengeIdx = 0;
+  private challengePhase: "aim" | "flying" | "won" | "dead" = "aim";
+  private challengeStars: ChallengeStar[] = [];
+  private challengeAttempts = 0;
+  private challengeFlightT = 0;
+  private challengeName = "";
+  private challengeTip = "";
+
   /** Fixed logical court — never adopt container pixel size as physics space. */
   private readonly W = COURT_W;
   private readonly H = COURT_H;
   private raf = 0;
   private lastTs = 0;
   private running = false;
+
+  private readonly onKeyDown = (e: KeyboardEvent): void => {
+    if (e.code !== "Space" && e.key !== " ") return;
+    if (!this.challengeActive || this.inMenu) return;
+    e.preventDefault();
+    this.challengeTapAdvance();
+  };
 
   private readonly onPointerDown = (e: PointerEvent): void => {
     e.preventDefault();
@@ -178,6 +209,7 @@ export class PlayLoop {
     this.canvas.addEventListener("pointerup", this.onPointerUp);
     this.canvas.addEventListener("pointercancel", this.onPointerUp);
     this.canvas.addEventListener("lostpointercapture", this.onPointerUp);
+    window.addEventListener("keydown", this.onKeyDown);
 
     if (import.meta.env.DEV) {
       const w = window as Window & {
@@ -209,6 +241,7 @@ export class PlayLoop {
     this.canvas.removeEventListener("pointerup", this.onPointerUp);
     this.canvas.removeEventListener("pointercancel", this.onPointerUp);
     this.canvas.removeEventListener("lostpointercapture", this.onPointerUp);
+    window.removeEventListener("keydown", this.onKeyDown);
     this.hud.destroy();
   }
 
@@ -256,17 +289,157 @@ export class PlayLoop {
     this.hud.hideContinue();
     this.hud.hideSummary();
 
+    if (mode === "challenges") {
+      this.startChallenges();
+      return;
+    }
+
+    this.challengeActive = false;
     this.applyRunResult(this.runFsm.dispatch({ type: "bootComplete" }));
+  }
+
+  private firstPlayableChallenge(): number {
+    const progress = loadChallengesProgress();
+    for (let i = 0; i < LEVELS.length; i++) {
+      if (!isChallengeUnlocked(i, progress)) break;
+      const cleared = !!progress.cleared[String(i)] || !!progress.cleared[i];
+      if (!cleared) return i;
+    }
+    for (let i = 0; i < LEVELS.length; i++) {
+      if (isChallengeUnlocked(i, progress)) return i;
+    }
+    return 0;
+  }
+
+  private startChallenges(): void {
+    this.challengeActive = true;
+    this.challengeIdx = this.firstPlayableChallenge();
+    this.loadChallengeLevel(this.challengeIdx);
+  }
+
+  private loadChallengeLevel(idx: number): void {
+    const level = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, idx))];
+    this.challengeIdx = idx;
+    this.challengeName = level.n;
+    this.challengeTip = level.tip;
+    this.challengeAttempts = 0;
+    this.showHint = idx === 0;
+
+    const world = makeWorld(level, this.W, this.H);
+    this.source = makeHoop(world.src.x, world.src.y, world.src.ang);
+    this.target = makeHoop(world.goal.x, world.goal.y, world.goal.ang);
+    this.obstacles = world.obs;
+    this.challengeStars = world.stars.map((s) => ({ ...s }));
+    this.worldT = 0;
+    updateObstacles(this.worldT, this.obstacles, 0);
+    this.resetNets();
+    this.resetChallengeShot();
+    this.hud.setModeLabel("challenges", `${idx + 1}/${LEVELS.length}`);
+    this.hud.setStars(0);
+  }
+
+  private resetChallengeShot(): void {
+    for (const o of this.obstacles) {
+      o.segs = [];
+      o.prev = null;
+      if (o.type === "glass") {
+        o.broken = false;
+        o.shatter = 0;
+      }
+      if (o.type === "portal") o.cool = 0;
+      if (o.type === "spinner") o.ang = 0;
+      if (o.type === "bumper" || o.type === "orbiter") o.pulse = 0;
+    }
+    for (const s of this.challengeStars) s.on = true;
+    this.worldT = 0;
+    updateObstacles(this.worldT, this.obstacles, 0);
+    this.challengePhase = "aim";
+    this.challengeFlightT = 0;
+    this.dragging = false;
+    this.dragPt = null;
+    this.aim = { x: 0, y: 0, pull: 0 };
+    this.trail.length = 0;
+    this.rings.length = 0;
+    this.continueLabel = null;
+    this.transition = null;
+    if (this.source) {
+      this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
+      this.ball.x = this.aimOrigin.x;
+      this.ball.y = this.aimOrigin.y;
+      this.ball.vx = 0;
+      this.ball.vy = 0;
+    }
+    this.hud.setStars(0);
+  }
+
+  private challengeStarsCollected(): number {
+    return this.challengeStars.filter((s) => !s.on).length;
+  }
+
+  private onChallengeWin(): void {
+    this.challengePhase = "won";
+    const collected = this.challengeStarsCollected();
+    const next = recordChallengeClear(
+      loadChallengesProgress(),
+      this.challengeIdx,
+      collected,
+    );
+    saveChallengesProgress(next);
+    this.shake = 9;
+    if (this.target) {
+      this.target.wobble = 1.5;
+      this.ball.x = this.target.x;
+      this.ball.y = this.target.y - 1;
+      kickNet(this.targetNet, 13);
+    }
+    this.ball.vx = 0;
+    this.ball.vy = 0;
+    this.continueLabel = "CLEARED";
+    this.challengeTip =
+      this.challengeIdx >= LEVELS.length - 1
+        ? "All clear — tap for menu"
+        : "Tap / space for next";
+    this.hud.setStars(collected);
+  }
+
+  private onChallengeDead(): void {
+    this.challengePhase = "dead";
+    this.shake = 5;
+    this.continueLabel = "MISSED";
+    this.challengeTip = "Tap / space to retry";
+  }
+
+  private challengeTapAdvance(): void {
+    if (this.challengePhase === "dead") {
+      this.resetChallengeShot();
+      this.challengeTip = LEVELS[this.challengeIdx]?.tip ?? "";
+      return;
+    }
+    if (this.challengePhase === "won") {
+      if (this.challengeIdx >= LEVELS.length - 1) {
+        this.backToMenu();
+        return;
+      }
+      const nextIdx = this.challengeIdx + 1;
+      const progress = loadChallengesProgress();
+      if (!isChallengeUnlocked(nextIdx, progress)) {
+        this.backToMenu();
+        return;
+      }
+      this.loadChallengeLevel(nextIdx);
+    }
   }
 
   private backToMenu(): void {
     this.inMenu = true;
+    this.challengeActive = false;
     this.dragging = false;
     this.dragPt = null;
     this.source = null;
     this.target = null;
     this.resetNets();
     this.obstacles = [];
+    this.challengeStars = [];
     this.transition = null;
     this.comboFx = null;
     this.shake = 0;
@@ -487,6 +660,24 @@ export class PlayLoop {
 
   private handleDown(clientX: number, clientY: number, time: number): void {
     if (this.inMenu) return;
+
+    if (this.challengeActive) {
+      if (this.challengePhase === "dead" || this.challengePhase === "won") {
+        this.challengeTapAdvance();
+        return;
+      }
+      if (this.challengePhase !== "aim" || !this.source) return;
+      const p = this.pointerCourt(clientX, clientY);
+      if (hypot(p.x - this.source.x, p.y - this.source.y) > 130) return;
+      this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
+      this.dragging = true;
+      this.dragPt = p;
+      this.inputLog.record({ type: "pointer_down", x: p.x, y: p.y }, time);
+      this.aim = aimFrom(this.aimOrigin, p, this.W, this.H);
+      this.showHint = false;
+      return;
+    }
+
     if (this.runFsm.runState !== "aiming" || !this.source) return;
     const p = this.pointerCourt(clientX, clientY);
     if (hypot(p.x - this.source.x, p.y - this.source.y) > 160) return;
@@ -499,7 +690,10 @@ export class PlayLoop {
   }
 
   private handleMove(clientX: number, clientY: number, time: number): void {
-    if (!this.dragging || this.runFsm.runState !== "aiming") return;
+    const aiming = this.challengeActive
+      ? this.challengePhase === "aim"
+      : this.runFsm.runState === "aiming";
+    if (!this.dragging || !aiming) return;
     const p = this.pointerCourt(clientX, clientY);
     this.dragPt = p;
     this.inputLog.record({ type: "pointer_move", x: p.x, y: p.y }, time);
@@ -507,11 +701,47 @@ export class PlayLoop {
   }
 
   private handleUp(clientX: number, clientY: number, time: number): void {
-    if (!this.dragging || this.runFsm.runState !== "aiming") return;
+    const aiming = this.challengeActive
+      ? this.challengePhase === "aim"
+      : this.runFsm.runState === "aiming";
+    if (!this.dragging || !aiming) return;
     const p = this.pointerCourt(clientX, clientY);
     this.dragPt = p;
     this.aim = aimFrom(this.aimOrigin, p, this.W, this.H);
     this.dragging = false;
+
+    if (this.challengeActive) {
+      if (hypot(this.aim.x, this.aim.y) < MIN_SHOT) {
+        this.inputLog.record({ type: "pointer_up", x: p.x, y: p.y }, time);
+        this.aim = { x: 0, y: 0, pull: 0 };
+        if (this.challengeIdx === 0) this.showHint = true;
+        return;
+      }
+      this.ball.x = this.aimOrigin.x;
+      this.ball.y = this.aimOrigin.y;
+      this.ball.vx = this.aim.x;
+      this.ball.vy = this.aim.y;
+      this.challengePhase = "flying";
+      this.challengeFlightT = 0;
+      this.challengeAttempts++;
+      spawnLaunchRings(this.rings, this.ball.x, this.ball.y);
+      kickNet(this.sourceNet, 5);
+      this.inputLog.record(
+        {
+          type: "release",
+          vx: this.aim.x,
+          vy: this.aim.y,
+          originX: this.aimOrigin.x,
+          originY: this.aimOrigin.y,
+          x: p.x,
+          y: p.y,
+        },
+        time,
+      );
+      this.aim = { x: 0, y: 0, pull: 0 };
+      this.dragPt = null;
+      return;
+    }
 
     const result = this.runFsm.dispatch({
       type: "release",
@@ -568,6 +798,13 @@ export class PlayLoop {
     this.updateComboFx(dt);
 
     if (this.inMenu) {
+      this.drawFrame(time);
+      return;
+    }
+
+    if (this.challengeActive) {
+      this.updateChallenges(time, dt);
+      this.stepNets(dt);
       this.drawFrame(time);
       return;
     }
@@ -644,6 +881,83 @@ export class PlayLoop {
 
     this.stepNets(dt);
     this.drawFrame(time);
+  }
+
+  /** Challenges flight uses FIXED_DT stepWorld order (pitch / physics README). */
+  private updateChallenges(time: number, dt: number): void {
+    const flying = this.challengePhase === "flying";
+    updateTrailEffects(
+      this.trail,
+      this.rings,
+      dt,
+      this.ball.x,
+      this.ball.y,
+      this.ball.vx,
+      this.ball.vy,
+      flying,
+    );
+
+    if (this.source) this.source.wobble *= Math.pow(0.04, dt);
+    if (this.target) this.target.wobble *= Math.pow(0.06, dt);
+
+    if (this.challengePhase === "aim" && this.source) {
+      this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
+      this.ball.x = this.aimOrigin.x;
+      this.ball.y =
+        this.aimOrigin.y + (this.dragging ? 0 : Math.sin(time / 260) * 1.2);
+      this.worldT += dt;
+      updateObstacles(this.worldT, this.obstacles, dt);
+      return;
+    }
+
+    if (this.challengePhase === "won" && this.target) {
+      this.ball.x = this.target.x;
+      this.ball.y = this.target.y - 1 + Math.sin(time / 120) * 0.8;
+      this.worldT += dt;
+      updateObstacles(this.worldT, this.obstacles, dt);
+      return;
+    }
+
+    if (this.challengePhase === "dead") {
+      this.worldT += dt;
+      updateObstacles(this.worldT, this.obstacles, dt);
+      return;
+    }
+
+    if (!flying || !this.source || !this.target) return;
+
+    let steps = Math.min(12, Math.ceil(dt / FIXED_DT));
+    let acc = Math.min(dt, 0.05);
+    while (steps-- > 0 && this.challengePhase === "flying") {
+      const stepDt = Math.min(FIXED_DT, acc);
+      if (stepDt <= 0) break;
+      acc -= stepDt;
+      this.challengeFlightT += stepDt;
+      const world = {
+        t: this.worldT,
+        w: this.W,
+        h: this.H,
+        src: this.source,
+        goal: this.target,
+        stars: this.challengeStars,
+        obs: this.obstacles,
+      };
+      const r = stepChallengeWorld(world, this.ball, stepDt);
+      this.worldT = world.t;
+      this.hud.setStars(this.challengeStarsCollected());
+      if (r === "win") {
+        this.onChallengeWin();
+        break;
+      }
+      if (r === "dead") {
+        this.onChallengeDead();
+        break;
+      }
+      if (this.challengeFlightT > FLIGHT_TIMEOUT) {
+        this.onChallengeDead();
+        break;
+      }
+    }
   }
 
   private triggerComboPopup(chainLength: number): void {
@@ -755,6 +1069,18 @@ export class PlayLoop {
   private visualMode(): VisualMode {
     if (this.poseOverride) return this.poseOverride;
     if (this.inMenu) return "boot";
+    if (this.challengeActive) {
+      switch (this.challengePhase) {
+        case "aim":
+          return "aim";
+        case "flying":
+          return "flying";
+        case "won":
+          return "scored";
+        case "dead":
+          return "continue";
+      }
+    }
     switch (this.runFsm.runState) {
       case "aiming":
         return "aim";
@@ -831,14 +1157,17 @@ export class PlayLoop {
         }
       : null;
 
+    const challengeHud = this.challengeActive;
     return {
       W: this.W,
       H: this.H,
       timeMs,
       mode,
-      score: this.scoreState.score,
-      stars: this.scoreState.stars,
-      combo: this.scoreState.chainLength,
+      score: challengeHud ? this.challengeIdx + 1 : this.scoreState.score,
+      stars: challengeHud
+        ? this.challengeStarsCollected()
+        : this.scoreState.stars,
+      combo: challengeHud ? 0 : this.scoreState.chainLength,
       safeTop: safeTopInset(),
       safeBottom: safeBottomInset(),
       ball: { x: this.ball.x, y: this.ball.y },
@@ -848,8 +1177,16 @@ export class PlayLoop {
       targetNet: mode === "transition" ? null : this.targetNet,
       sourcePull,
       obstacles: this.obstacles,
-      star: this.starPos,
-      starOn: !!this.scoreState.starActive && !!this.starPos,
+      star: challengeHud ? null : this.starPos,
+      starOn: challengeHud
+        ? false
+        : !!this.scoreState.starActive && !!this.starPos,
+      challengeStars: challengeHud ? this.challengeStars : undefined,
+      tip: challengeHud
+        ? this.challengePhase === "aim"
+          ? `${this.challengeName} — ${this.challengeTip}`
+          : this.challengeTip
+        : null,
       drag: this.dragging,
       dragPt: this.dragPt,
       aimOrigin: this.aimOrigin,
@@ -858,12 +1195,14 @@ export class PlayLoop {
       predictDots,
       trail: this.trail,
       rings: this.rings,
-      showHint: this.showHint,
-      comboChip: chip,
-      comboFx: comboFxDraw,
+      showHint: this.showHint && !challengeHud,
+      comboChip: challengeHud ? null : chip,
+      comboFx: challengeHud ? null : comboFxDraw,
       shake: this.shake,
       continueLabel:
-        mode === "continue" || mode === "ended" ? this.continueLabel : null,
+        mode === "continue" || mode === "ended" || mode === "scored"
+          ? this.continueLabel
+          : null,
       transition,
     };
   }
