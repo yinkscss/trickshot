@@ -5,8 +5,10 @@ import {
   allowsContinue,
   buildRunSummary,
   comboLabel,
+  classifyDunk,
   createInputLogRecorder,
   createScoreState,
+  tierFromDunks,
   isChallengeUnlocked,
   loadChallengesProgress,
   makeWorld,
@@ -17,6 +19,7 @@ import {
   saveChallengesProgress,
   shotRng,
   stepChallengeWorld,
+  stepHoopOsc,
   type ChallengeStar,
   type InputLogRecorder,
   type PhysicsIntent,
@@ -61,15 +64,27 @@ import {
   recordLocalScore,
   emitRunSummary,
   comboSubtext,
+  makeDunkPopup,
+  makeScoreRing,
   shakeIntensity,
+  stepDunkPopups,
+  stepScoreRings,
   tournamentRunId,
+  addLifetimeStars,
+  getEquippedPreset,
+  unlockAffordablePresets,
+  type DunkPopup,
+  type ScoreRing,
 } from "../meta";
 import { MetaHud } from "../ui/metaHud";
+import { Music, Sfx, toggleMuted } from "../audio";
 import {
   DirectCanvasRenderer,
+  ambientForTier,
   clientToCourt,
   kickNet,
   makeNet,
+  preloadObstacleArt,
   safeTopInset,
   safeBottomInset,
   spawnLaunchRings,
@@ -118,7 +133,12 @@ export class PlayLoop {
   private tournamentId: string | null = null;
   private inMenu = true;
   private comboFx: ComboFx | null = null;
+  private dunkPopups: DunkPopup[] = [];
+  private scoreRings: ScoreRing[] = [];
   private shake = 0;
+  /** Per-flight dunk quality flags — reset on release. */
+  private wallBounced = false;
+  private rimTouched = false;
 
   private source: Hoop | null = null;
   private target: Hoop | null = null;
@@ -168,6 +188,7 @@ export class PlayLoop {
 
   private readonly onPointerDown = (e: PointerEvent): void => {
     e.preventDefault();
+    void Sfx.unlock().then(() => Music.start());
     this.canvas.setPointerCapture(e.pointerId);
     this.handleDown(e.clientX, e.clientY, e.timeStamp);
   };
@@ -195,6 +216,12 @@ export class PlayLoop {
       onEndRun: () => this.declineContinue(),
       onDismissSummary: () => this.backToMenu(),
       onPlayAgain: () => this.backToMenu(),
+      onToggleMute: () => {
+        const muted = toggleMuted();
+        Music.refreshMute();
+        if (muted) Sfx.stopFlight();
+        return muted;
+      },
     });
   }
 
@@ -203,6 +230,7 @@ export class PlayLoop {
     this.running = true;
     this.syncSize();
     this.hud.showModePicker();
+    void preloadObstacleArt();
 
     this.canvas.addEventListener("pointerdown", this.onPointerDown);
     this.canvas.addEventListener("pointermove", this.onPointerMove);
@@ -288,6 +316,9 @@ export class PlayLoop {
     this.hud.hideModePicker();
     this.hud.hideContinue();
     this.hud.hideSummary();
+    Music.setMenu(false);
+    Music.setDucked(false);
+    Music.setIntensity({ tier: 1, streak: 0 });
 
     if (mode === "challenges") {
       this.startChallenges();
@@ -447,6 +478,10 @@ export class PlayLoop {
     this.hud.hideContinue();
     this.hud.hideSummary();
     this.hud.showModePicker();
+    Sfx.stopFlight();
+    Music.setMenu(true);
+    Music.setDucked(false);
+    Music.setIntensity({ tier: 1, streak: 0 });
   }
 
   private resetNets(): void {
@@ -480,6 +515,9 @@ export class PlayLoop {
         : [];
 
     emitRunSummary(summary);
+    addLifetimeStars(summary.stars);
+    unlockAffordablePresets();
+    this.hud.refreshCosmetics();
     this.hud.showSummary(summary, board);
     this.inMenu = true;
   }
@@ -510,7 +548,7 @@ export class PlayLoop {
       height: this.H,
     });
     this.source = makeHoop(L.source.x, L.source.y, L.source.ang);
-    this.target = makeHoop(L.goal.x, L.goal.y, L.goal.ang);
+    this.target = makeHoop(L.goal.x, L.goal.y, L.goal.ang, L.goal.osc);
     this.obstacles = L.obstacles.map((o) => ({ ...o }));
     this.worldT = 0;
     updateObstacles(this.worldT, this.obstacles, 0);
@@ -591,6 +629,7 @@ export class PlayLoop {
           break;
         case "showContinuePrompt":
           this.continueLabel = "MISS";
+          Music.setDucked(true);
           this.hud.showContinue({
             mode: this.runFsm.state.mode,
             score: this.scoreState.score,
@@ -600,6 +639,7 @@ export class PlayLoop {
           break;
         case "hideContinuePrompt":
           this.continueLabel = null;
+          Music.setDucked(false);
           this.hud.hideContinue();
           break;
         case "runEnded":
@@ -624,6 +664,8 @@ export class PlayLoop {
   }
 
   private dispatchMiss(): void {
+    Sfx.stopFlight();
+    Sfx.play("miss");
     this.inputLog.record({ type: "out_of_bounds" }, performance.now());
     this.scoreState = reduceScoreEvent(this.scoreState, { type: "miss" });
     this.dragging = false;
@@ -631,6 +673,10 @@ export class PlayLoop {
     this.trail.length = 0;
     this.rings.length = 0;
     this.comboFx = null;
+    Music.setIntensity({
+      tier: tierFromDunks(this.score),
+      streak: 0,
+    });
     this.applyRunResult(this.runFsm.dispatch({ type: "outOfBounds" }));
     if (allowsContinue(this.runFsm.state.mode)) {
       this.applyRunResult(this.runFsm.dispatch({ type: "offerContinue" }));
@@ -698,6 +744,7 @@ export class PlayLoop {
     this.dragPt = p;
     this.inputLog.record({ type: "pointer_move", x: p.x, y: p.y }, time);
     this.aim = aimFrom(this.aimOrigin, p, this.W, this.H);
+    Sfx.aimTick();
   }
 
   private handleUp(clientX: number, clientY: number, time: number): void {
@@ -714,6 +761,7 @@ export class PlayLoop {
       if (hypot(this.aim.x, this.aim.y) < MIN_SHOT) {
         this.inputLog.record({ type: "pointer_up", x: p.x, y: p.y }, time);
         this.aim = { x: 0, y: 0, pull: 0 };
+        Sfx.play("fail");
         if (this.challengeIdx === 0) this.showHint = true;
         return;
       }
@@ -724,6 +772,10 @@ export class PlayLoop {
       this.challengePhase = "flying";
       this.challengeFlightT = 0;
       this.challengeAttempts++;
+      this.wallBounced = false;
+      this.rimTouched = false;
+      Sfx.play("shoot");
+      Sfx.startFlight();
       spawnLaunchRings(this.rings, this.ball.x, this.ball.y);
       kickNet(this.sourceNet, 5);
       this.inputLog.record(
@@ -754,6 +806,7 @@ export class PlayLoop {
     if (!result.accepted) {
       this.inputLog.record({ type: "pointer_up", x: p.x, y: p.y }, time);
       this.aim = { x: 0, y: 0, pull: 0 };
+      Sfx.play("fail");
       if (this.runFsm.state.score === 0) this.showHint = true;
       return;
     }
@@ -771,6 +824,10 @@ export class PlayLoop {
       time,
     );
     this.applyRunResult(result);
+    this.wallBounced = false;
+    this.rimTouched = false;
+    Sfx.play("shoot");
+    Sfx.startFlight();
     this.aim = { x: 0, y: 0, pull: 0 };
     this.dragPt = null;
   }
@@ -782,6 +839,8 @@ export class PlayLoop {
         this.comboFx = null;
       }
     }
+    stepDunkPopups(this.dunkPopups, dt);
+    stepScoreRings(this.scoreRings, dt);
     if (this.shake > 0) {
       this.shake *= Math.pow(0.008, dt);
       if (this.shake < 0.05) this.shake = 0;
@@ -841,6 +900,14 @@ export class PlayLoop {
     this.worldT += dt;
     updateObstacles(this.worldT, this.obstacles, dt);
 
+    if (
+      this.target?.osc &&
+      (this.runFsm.runState === "aiming" ||
+        this.runFsm.runState === "flying")
+    ) {
+      stepHoopOsc(this.target, dt);
+    }
+
     if (this.runFsm.runState === "aiming" && this.source) {
       this.aimOrigin = { x: this.source.x, y: this.source.y - 1 };
       this.ball.x = this.aimOrigin.x;
@@ -860,9 +927,17 @@ export class PlayLoop {
     }
 
     if (flying) {
-      stepProjectileSubsteps(this.ball, dt, this.W);
-      if (this.source) rimHit(this.source, this.ball);
-      if (this.target) rimHit(this.target, this.ball);
+      if (stepProjectileSubsteps(this.ball, dt, this.W)) {
+        this.wallBounced = true;
+      }
+      if (this.source && rimHit(this.source, this.ball)) {
+        this.rimTouched = true;
+        Sfx.play("rim");
+      }
+      if (this.target && rimHit(this.target, this.ball)) {
+        this.rimTouched = true;
+        Sfx.play("rim");
+      }
       const hazard = collideObstacles(this.obstacles, this.ball, dt);
       this.tryCollectStar();
 
@@ -986,7 +1061,27 @@ export class PlayLoop {
     }
     this.applyRunResult(this.runFsm.dispatch({ type: "throughHoop" }, time));
     this.inputLog.record({ type: "through_hoop" }, time);
-    this.scoreState = reduceScoreEvent(this.scoreState, { type: "dunk" });
+    const quality = classifyDunk({
+      wallBounced: this.wallBounced,
+      rimTouched: this.rimTouched,
+    });
+    if (this.target) this.target.osc = undefined;
+    this.scoreState = reduceScoreEvent(this.scoreState, {
+      type: "dunk",
+      quality,
+    });
+    Sfx.stopFlight();
+    Sfx.play(quality === "swish" ? "swish" : "rim");
+    Music.setIntensity({
+      tier: tierFromDunks(this.score + 1),
+      streak: this.scoreState.chainLength,
+    });
+    if (this.target) {
+      this.dunkPopups.push(
+        makeDunkPopup(this.target.x, this.target.y - 28, quality),
+      );
+      this.scoreRings.push(makeScoreRing(this.target.x, this.target.y));
+    }
     this.triggerComboPopup(this.scoreState.chainLength);
     this.hud.setStars(this.scoreState.stars);
     this.trail.length = 0;
@@ -1120,6 +1215,8 @@ export class PlayLoop {
             this.aim.y,
             this.W,
             this.H,
+            this.obstacles,
+            this.worldT,
           )
         : [];
 
@@ -1198,11 +1295,33 @@ export class PlayLoop {
       showHint: this.showHint && !challengeHud,
       comboChip: challengeHud ? null : chip,
       comboFx: challengeHud ? null : comboFxDraw,
+      dunkPopups: challengeHud
+        ? []
+        : this.dunkPopups.map((p) => ({
+            x: p.x,
+            y: p.y,
+            text: p.text,
+            life: p.t / p.dur,
+          })),
+      scoreRings: challengeHud
+        ? []
+        : this.scoreRings.map((r) => ({
+            x: r.x,
+            y: r.y,
+            life: r.t / r.dur,
+          })),
       shake: this.shake,
       continueLabel:
         mode === "continue" || mode === "ended" || mode === "scored"
           ? this.continueLabel
           : null,
+      ambient: challengeHud
+        ? ambientForTier(1)
+        : ambientForTier(tierFromDunks(this.score)),
+      cosmetics: (() => {
+        const c = getEquippedPreset();
+        return { ballCss: c.ballCss, trailCss: c.trailCss };
+      })(),
       transition,
     };
   }

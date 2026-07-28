@@ -15,6 +15,15 @@ export interface Hoop {
   y: number;
   ang: number;
   wobble: number;
+  /** Endless high-tier goal oscillation (frozen on dunk). */
+  osc?: {
+    axis: "x" | "y";
+    amp: number;
+    spd: number;
+    phase: number;
+    originX: number;
+    originY: number;
+  };
 }
 
 export interface AimVector {

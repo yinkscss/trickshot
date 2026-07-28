@@ -31,6 +31,7 @@ export interface DunkTransition {
   arriveTo: Pose2;
   nextObstacles: Obstacle[];
   oldObstacles: Obstacle[];
+  nextGoalOsc?: Hoop["osc"];
   carry: TransitionPose | null;
   leave: TransitionPose | null;
   arrive: TransitionPose | null;
@@ -86,6 +87,13 @@ export function beginDunkTransition(args: {
     arriveTo: { x: L.goal.x, y: L.goal.y, ang: L.goal.ang },
     nextObstacles: L.obstacles.map((o) => ({ ...o })),
     oldObstacles: args.obstacles.map((o) => ({ ...o })),
+    nextGoalOsc: L.goal.osc
+      ? {
+          ...L.goal.osc,
+          originX: L.goal.x,
+          originY: L.goal.y,
+        }
+      : undefined,
     carry: null,
     leave: null,
     arrive: null,
@@ -141,7 +149,12 @@ export function finishDunkTransition(tr: DunkTransition): {
   aimOrigin: { x: number; y: number };
 } {
   const source = makeHoop(tr.carryTo.x, tr.carryTo.y, tr.carryTo.ang);
-  const target = makeHoop(tr.arriveTo.x, tr.arriveTo.y, tr.arriveTo.ang);
+  const target = makeHoop(
+    tr.arriveTo.x,
+    tr.arriveTo.y,
+    tr.arriveTo.ang,
+    tr.nextGoalOsc,
+  );
   return {
     source,
     target,

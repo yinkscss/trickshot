@@ -73,7 +73,7 @@ describe("replayRunFromInputLog golden fixture", () => {
       minSpeed: MIN_SPEED,
     });
 
-    assert.equal(replay.score, dunkPoints(1));
+    assert.equal(replay.score, dunkPoints("bank"));
     assert.equal(replay.chainLength, 1);
     assert.equal(replay.fsmSnapshot.score, 1);
     assert.equal(replay.fsmSnapshot.state, "scored");

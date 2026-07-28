@@ -24,6 +24,7 @@ import {
   STAR_LINE,
   VIOLET,
 } from "./colors";
+import { tryDrawObstacleSprite } from "./obstacleArt";
 import {
   drawMouthShade,
   drawNetHalf,
@@ -78,9 +79,22 @@ export interface PitchDrawState {
   comboChip: string | null;
   /** Center-screen combo popup (pitch `drawComboFX`). */
   comboFx: { label: string; sub: string; life: number } | null;
+  /** Localized dunk +N popup at rim. */
+  dunkPopups?: ReadonlyArray<{
+    x: number;
+    y: number;
+    text: string;
+    life: number;
+  }>;
+  /** Expanding score rings at rim. */
+  scoreRings?: ReadonlyArray<{ x: number; y: number; life: number }>;
   /** Screen shake magnitude in logical px (decays each frame). */
   shake: number;
+  /** Equipped cosmetic colors. */
+  cosmetics?: { ballCss: string; trailCss: string };
   continueLabel: string | null;
+  /** Difficulty ambient court tint. */
+  ambient?: { court: string; rail: string };
   transition: {
     leave: (PitchHoop & { a?: number }) | null;
     arrive: (PitchHoop & { a?: number }) | null;
@@ -146,6 +160,7 @@ export function drawMarble(
   x: number,
   y: number,
   r: number,
+  ballCss = "#1e5fff",
 ): void {
   const g = ctx.createRadialGradient(
     x - r * 0.35,
@@ -155,10 +170,10 @@ export function drawMarble(
     y,
     r,
   );
-  g.addColorStop(0, "#d4efff");
-  g.addColorStop(0.22, "#6eb6ff");
-  g.addColorStop(0.55, "#1e5fff");
-  g.addColorStop(0.82, "#1540c0");
+  g.addColorStop(0, "#ffffff");
+  g.addColorStop(0.22, ballCss);
+  g.addColorStop(0.55, ballCss);
+  g.addColorStop(0.82, ballCss);
   g.addColorStop(1, "#0a2878");
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -200,6 +215,7 @@ function drawHoop(
     ballY?: number;
     timeMs?: number;
     combo?: number;
+    ballCss?: string;
   } = {},
 ): void {
   const { withBall = false, net = null } = opts;
@@ -237,7 +253,7 @@ function drawHoop(
     // Ball nesting uses physics ang; tip is cosmetic lean only.
     const L = hoopLocal({ x, y, ang: tipAng, wobble: h.wobble ?? 0 }, bx, by);
     drawFireAura(ctx, L.x, L.y, BR, opts.timeMs ?? 0, opts.combo ?? 0);
-    drawMarble(ctx, L.x, L.y, BR);
+    drawMarble(ctx, L.x, L.y, BR, opts.ballCss);
   }
 
   if (net) {
@@ -398,6 +414,7 @@ function drawObstacles(
 ): void {
   const perfT = timeMs / 1000;
   for (const o of obstacles) {
+    if (tryDrawObstacleSprite(ctx, o, timeMs)) continue;
     if (o.type === "wall" || o.type === "gate") {
       const thick = o.type === "wall" ? o.w : o.thick;
       const segs = o.type === "wall" ? wallSegs(o) : o.segs ?? [];
@@ -619,6 +636,7 @@ function drawTrail(
   ctx: CanvasRenderingContext2D,
   trail: TrailParticle[],
   rings: LaunchRing[],
+  trailCss = CYAN,
 ): void {
   for (let i = 0; i < trail.length; i++) {
     const p = trail[i];
@@ -628,7 +646,7 @@ function drawTrail(
     ctx.translate(p.x, p.y);
     ctx.rotate(p.rot);
     ctx.globalAlpha = p.life * 0.85;
-    ctx.fillStyle = i % 2 === 0 ? CYAN : "#8adfff";
+    ctx.fillStyle = i % 2 === 0 ? trailCss : "#ffffff";
     ctx.beginPath();
     ctx.moveTo(0, -s * stretch);
     ctx.lineTo(s * 0.62, 0);
@@ -640,7 +658,7 @@ function drawTrail(
   }
   for (const r of rings) {
     ctx.globalAlpha = r.a;
-    ctx.strokeStyle = CYAN;
+    ctx.strokeStyle = trailCss;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.ellipse(r.x, r.y, r.rx, r.ry, 0, 0, Math.PI * 2);
@@ -816,18 +834,20 @@ function drawCourtRails(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
+  ambient?: { court: string; rail: string },
 ): void {
-  ctx.fillStyle = COURT;
+  ctx.fillStyle = ambient?.court ?? COURT;
   ctx.fillRect(-30, -30, W + 60, H + 60);
 
+  const railColor = ambient?.rail ?? "rgba(90,96,110,0.14)";
   const rail = ctx.createLinearGradient(0, 0, 14, 0);
-  rail.addColorStop(0, "rgba(90,96,110,0.14)");
+  rail.addColorStop(0, railColor);
   rail.addColorStop(1, "rgba(90,96,110,0)");
   ctx.fillStyle = rail;
   ctx.fillRect(0, 0, 14, H);
 
   const railR = ctx.createLinearGradient(W, 0, W - 14, 0);
-  railR.addColorStop(0, "rgba(90,96,110,0.14)");
+  railR.addColorStop(0, railColor);
   railR.addColorStop(1, "rgba(90,96,110,0)");
   ctx.fillStyle = railR;
   ctx.fillRect(W - 14, 0, 14, H);
@@ -843,7 +863,7 @@ export function drawPitchFrame(
   const sy = (Math.random() - 0.5) * state.shake;
   ctx.save();
   ctx.translate(sx, sy);
-  drawCourtRails(ctx, W, H);
+  drawCourtRails(ctx, W, H, state.ambient);
   drawHUD(ctx, state);
 
   if (state.mode === "transition" && state.transition) {
@@ -889,6 +909,7 @@ export function drawPitchFrame(
         ballY: state.ball.y,
         timeMs: state.timeMs,
         combo: state.combo,
+        ballCss: state.cosmetics?.ballCss,
       });
     }
   } else {
@@ -911,6 +932,7 @@ export function drawPitchFrame(
         ballY: state.ball.y,
         timeMs: state.timeMs,
         combo: state.combo,
+        ballCss: state.cosmetics?.ballCss,
       });
     }
 
@@ -922,22 +944,56 @@ export function drawPitchFrame(
         ballY: state.ball.y,
         timeMs: state.timeMs,
         combo: state.combo,
+        ballCss: state.cosmetics?.ballCss,
       });
     }
   }
 
-  drawTrail(ctx, state.trail, state.rings);
+  drawTrail(ctx, state.trail, state.rings, state.cosmetics?.trailCss);
 
   if (state.mode === "aim" && state.drag) {
     drawAimPreview(ctx, state);
   }
 
   if (state.mode === "flying" || state.mode === "continue") {
-    drawMarble(ctx, state.ball.x, state.ball.y, BR);
+    drawMarble(ctx, state.ball.x, state.ball.y, BR, state.cosmetics?.ballCss);
   }
 
   drawHint(ctx, state);
+  drawDunkJuice(ctx, state);
   drawComboFX(ctx, state);
   drawContinue(ctx, state);
   ctx.restore();
+}
+
+function drawDunkJuice(
+  ctx: CanvasRenderingContext2D,
+  state: PitchDrawState,
+): void {
+  for (const r of state.scoreRings ?? []) {
+    const t = r.life;
+    const scale = 0.5 + t * 1.5;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - t);
+    ctx.beginPath();
+    ctx.ellipse(r.x, r.y, 22 * scale, 10 * scale, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = ORANGE;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+  }
+  for (const p of state.dunkPopups ?? []) {
+    const rise = p.life * 36;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - p.life);
+    ctx.font = "900 18px Nunito, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 4;
+    ctx.fillStyle = ORANGE;
+    ctx.strokeText(p.text, p.x, p.y - rise);
+    ctx.fillText(p.text, p.x, p.y - rise);
+    ctx.restore();
+  }
 }

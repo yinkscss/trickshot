@@ -9,6 +9,7 @@ export {
   RED,
   OBSTACLE_RED,
   BALL_FILL,
+  ambientForTier,
 } from "./colors";
 export {
   DirectCanvasRenderer,
@@ -23,6 +24,7 @@ export {
   drawStarIcon,
   type PitchDrawState,
 } from "./pitchDraw";
+export { preloadObstacleArt, getObstacleSprite } from "./obstacleArt";
 export {
   makeNet,
   kickNet,

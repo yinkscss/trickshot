@@ -97,6 +97,28 @@ describe("preview / flight determinism", () => {
     assert.equal(drawn, dots.length);
   });
 
+  it("predictPath truncates when a solid obstacle blocks the chord", () => {
+    const W = 390;
+    const H = 780;
+    const origin = { x: W * 0.22, y: H * 0.7 };
+    const clear = predictPath(origin, 400, -900, W, H);
+    const wall = {
+      type: "wall" as const,
+      x: W * 0.5,
+      y: H * 0.5,
+      h: 220,
+      w: 10,
+      segs: [] as [number, number, number, number][],
+      prev: null,
+    };
+    const blocked = predictPath(origin, 400, -900, W, H, [wall], 0);
+    assert.ok(clear.length > 0);
+    assert.ok(
+      blocked.length < clear.length,
+      `expected truncation (${blocked.length} < ${clear.length})`,
+    );
+  });
+
   it("identical clones stay in lockstep through the integrator", () => {
     const W = 390;
     const a = { x: 86, y: 545, vx: -900, vy: -1100 };

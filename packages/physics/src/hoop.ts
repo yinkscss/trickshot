@@ -20,14 +20,17 @@ export function throughHoop(h: Hoop, ball: Projectile): boolean {
   return hypot(ball.vx, ball.vy) > 70 && ball.y >= h.y - 30;
 }
 
-/** Pitch `rimHit` — elastic bounce off the rim edge; sets `h.wobble` on contact */
-export function rimHit(h: Hoop, ball: Projectile): void {
+/**
+ * Pitch `rimHit` — elastic bounce off the rim edge; sets `h.wobble` on contact.
+ * Returns true when a bounce was applied (for dunk quality flags).
+ */
+export function rimHit(h: Hoop, ball: Projectile): boolean {
   const L = hoopLocal(h, ball.x, ball.y);
   const dist = Math.sqrt(
     (L.x * L.x) / (RIM_RX * RIM_RX) + (L.y * L.y) / (RIM_RY * RIM_RY),
   );
-  if (dist < 0.78 || dist > 1.2) return;
-  if (Math.abs(dist - 1) > 0.14) return;
+  if (dist < 0.78 || dist > 1.2) return false;
+  if (Math.abs(dist - 1) > 0.14) return false;
 
   let nx = L.x / (RIM_RX * RIM_RX);
   let ny = L.y / (RIM_RY * RIM_RY);
@@ -40,7 +43,7 @@ export function rimHit(h: Hoop, ball: Projectile): void {
   let lvx = ball.vx * c - ball.vy * s;
   let lvy = ball.vx * s + ball.vy * c;
   const vn = lvx * nx + lvy * ny;
-  if (vn >= 0) return;
+  if (vn >= 0) return false;
 
   lvx -= 1.55 * vn * nx;
   lvy -= 1.55 * vn * ny;
@@ -52,4 +55,5 @@ export function rimHit(h: Hoop, ball: Projectile): void {
   ball.vx = lvx * c2 - lvy * s2;
   ball.vy = lvx * s2 + lvy * c2;
   h.wobble = 1;
+  return true;
 }

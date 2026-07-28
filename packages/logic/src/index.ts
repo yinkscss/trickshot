@@ -42,10 +42,12 @@ export {
   layoutForSide,
   nextSide,
   shotRng,
+  stepHoopOsc,
   unlockedObstacleTypes,
   type BumperObstacle,
   type EndlessObstacleType,
   type GenerateShotLayoutInput,
+  type HoopOsc,
   type HoopPose,
   type Obstacle,
   type ShotLayout,
@@ -70,11 +72,19 @@ export {
 } from "./run-seed.js";
 
 export {
+  tierFromDunks,
+  tierLayoutModifiers,
+  type DifficultyTier,
+  type TierLayoutModifiers,
+} from "./difficulty-tier.js";
+
+export {
   buildRunSummary,
+  classifyDunk,
   comboLabel,
-  comboMultiplier,
   createScoreState,
   dunkPoints,
+  dunkQualityLabel,
   DUNK_BASE_POINTS,
   reduceScoreEvent,
   shouldSpawnStar,
@@ -82,6 +92,7 @@ export {
   STAR_POINTS,
   STAR_SPAWN_PROBABILITY,
   type ComboLabel,
+  type DunkQuality,
   type ScoreEvent,
   type ScoreState,
 } from "./scoring.js";

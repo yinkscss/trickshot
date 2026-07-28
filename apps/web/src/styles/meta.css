@@ -11,8 +11,16 @@
   pointer-events: none;
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   padding: max(0.55rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
     0 max(0.75rem, env(safe-area-inset-left));
+}
+
+#meta-hud .meta-mute {
+  pointer-events: auto;
+  cursor: pointer;
+  border: none;
+  font: inherit;
 }
 
 #meta-hud .meta-chip {
@@ -114,4 +122,17 @@
   font-size: 0.85rem;
   font-weight: 700;
   color: #5f646e;
+}
+
+#meta-hud .meta-cosmetics {
+  margin-top: 0.85rem;
+  text-align: left;
+}
+
+#meta-hud .meta-cosmetics h3 {
+  margin: 0 0 0.35rem;
+}
+
+#meta-hud .cosmetic-btn:disabled {
+  opacity: 0.45;
 }

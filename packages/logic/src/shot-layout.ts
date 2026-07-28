@@ -1,6 +1,7 @@
 import type { GameMode } from "@trickshot/shared";
 import type { Obstacle } from "@trickshot/physics";
 import { createRng, type Rng } from "./rng.js";
+import { tierFromDunks, tierLayoutModifiers } from "./difficulty-tier.js";
 
 export type { Obstacle };
 export type { BumperObstacle, WallObstacle } from "@trickshot/physics";
@@ -13,10 +14,21 @@ export interface Vec2 {
   y: number;
 }
 
+/** Optional goal oscillation (endless high tiers). */
+export interface HoopOsc {
+  axis: "x" | "y";
+  amp: number;
+  spd: number;
+  phase: number;
+  originX: number;
+  originY: number;
+}
+
 export interface HoopPose {
   x: number;
   y: number;
   ang: number;
+  osc?: HoopOsc;
 }
 
 export interface ShotLayout {
@@ -127,10 +139,10 @@ function makeEndlessObstacle(
   worldWidth: number,
   worldHeight: number,
   rng: Rng,
+  hard: boolean,
 ): Obstacle {
   const midX = (sx + tx) / 2;
   const midY = (sy + ty) / 2;
-  const hard = score >= 4;
   const towardGoal = sx < tx ? 1 : -1;
   const offset = worldWidth * (hard ? 0.08 : 0.06);
   const jitter = () => (rng.next() - 0.5) * worldWidth * (hard ? 0.04 : 0.02);
@@ -296,6 +308,7 @@ function makeEndlessObstacle(
 /**
  * Endless spawn: unlock kit types by score, then pick one at random.
  * Still exactly 0 (tutorial) or 1 obstacle — challenges keep authored multi-obs.
+ * `obstacleChance` from difficulty tiers may yield an empty shot even when unlocked.
  */
 export function buildObstacles(
   sx: number,
@@ -306,9 +319,12 @@ export function buildObstacles(
   worldWidth: number,
   rng: Rng,
   worldHeight = worldWidth * 2,
+  obstacleChance = 1,
+  hard = score >= 4,
 ): Obstacle[] {
   const types = unlockedObstacleTypes(score);
   if (types.length === 0) return [];
+  if (rng.next() >= obstacleChance) return [];
 
   const type = pickType(types, rng);
   return [
@@ -322,6 +338,7 @@ export function buildObstacles(
       worldWidth,
       worldHeight,
       rng,
+      hard,
     ),
   ];
 }
@@ -335,6 +352,29 @@ export function generateShotLayout(input: GenerateShotLayoutInput): ShotLayout {
     input.height,
   );
   const rng = shotRng(input.seed, input.score, input.side, input.mode);
+  const endless = input.mode !== "challenges";
+  const mods = endless
+    ? tierLayoutModifiers(tierFromDunks(input.score))
+    : tierLayoutModifiers(1);
+
+  const jitterAmp = input.width * 0.015 * (mods.jitterScale - 1);
+  if (jitterAmp > 0) {
+    base.goal.x += (rng.next() - 0.5) * 2 * jitterAmp;
+    base.source.x += (rng.next() - 0.5) * jitterAmp;
+  }
+
+  if (mods.movingGoal) {
+    const axis: "x" | "y" = rng.next() < 0.5 ? "x" : "y";
+    base.goal.osc = {
+      axis,
+      amp: mods.moveRange,
+      spd: mods.moveSpeed,
+      phase: rng.next() * Math.PI * 2,
+      originX: base.goal.x,
+      originY: base.goal.y,
+    };
+  }
+
   const obstacles = buildObstacles(
     base.source.x,
     base.source.y,
@@ -344,7 +384,27 @@ export function generateShotLayout(input: GenerateShotLayoutInput): ShotLayout {
     input.width,
     rng,
     input.height,
+    mods.obstacleChance,
+    mods.hard || input.score >= 4,
   );
 
   return { ...base, obstacles };
+}
+
+/** Step oscillating hoop pose; no-op when osc missing or frozen. */
+export function stepHoopOsc(
+  hoop: { x: number; y: number; osc?: HoopOsc },
+  dt: number,
+): void {
+  const o = hoop.osc;
+  if (!o || o.amp <= 0 || o.spd <= 0) return;
+  o.phase += dt * o.spd;
+  const offset = Math.sin(o.phase) * o.amp;
+  if (o.axis === "x") {
+    hoop.x = o.originX + offset;
+    hoop.y = o.originY;
+  } else {
+    hoop.x = o.originX;
+    hoop.y = o.originY + offset;
+  }
 }

@@ -111,7 +111,7 @@ describe("rimHit", () => {
     };
     const vx0 = ball.vx;
     const vy0 = ball.vy;
-    rimHit(h, ball);
+    assert.equal(rimHit(h, ball), true);
     assert.equal(h.wobble, 1);
     assert.ok(ball.vx !== vx0 || ball.vy !== vy0);
   });
@@ -125,7 +125,7 @@ describe("rimHit", () => {
       vy: -100,
     };
     const snap = { ...ball };
-    rimHit(h, ball);
+    assert.equal(rimHit(h, ball), false);
     assert.deepEqual(ball, snap);
     assert.equal(h.wobble, 0);
   });
@@ -139,7 +139,7 @@ describe("rimHit", () => {
       vy: 0,
     };
     const snap = { ...ball };
-    rimHit(h, ball);
+    assert.equal(rimHit(h, ball), false);
     assert.deepEqual(ball, snap);
   });
 });
