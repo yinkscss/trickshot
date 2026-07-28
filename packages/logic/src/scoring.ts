@@ -1,12 +1,15 @@
 import type { GameMode, InputLog, RunSummary } from "@trickshot/shared";
 
-/** Juice label thresholds (pitch `triggerComboAnim` / Alpha meta). */
+/** Juice label thresholds (visual streak only — no longer multiplies points). */
 export type ComboLabel = null | "x2" | "x3" | "ON FIRE";
 
-/** Base dunk points before chain multiplier. */
-export const DUNK_BASE_POINTS = 100;
+/** Dunk quality for point award + popup label. */
+export type DunkQuality = "swish" | "bank" | "rim";
 
-/** Soft-currency bonus when a star is collected mid-flight. */
+/** Base dunk points (perfect swish uses ×2). */
+export const DUNK_BASE_POINTS = 1;
+
+/** Soft-currency unit when a star is collected (does not add to run score). */
 export const STAR_POINTS = 25;
 
 /** Pitch `starOn`: 90% spawn chance, always on for early climb. */
@@ -16,7 +19,7 @@ export const STAR_SPAWN_PROBABILITY = 0.9;
 export const STAR_GUARANTEE_BELOW_SCORE = 2;
 
 export interface ScoreState {
-  /** Total point score (dunks + star bonuses). */
+  /** Total point score (dunk quality points only). */
   score: number;
   /** Soft-currency stars collected this run. */
   stars: number;
@@ -27,7 +30,7 @@ export interface ScoreState {
 }
 
 export type ScoreEvent =
-  | { type: "dunk" }
+  | { type: "dunk"; quality: DunkQuality }
   | { type: "miss" }
   | { type: "acceptContinue" }
   | { type: "declineContinue" }
@@ -43,7 +46,7 @@ export function createScoreState(): ScoreState {
   };
 }
 
-/** Combo juice label for Sub D — null when no popup. */
+/** Combo juice label — visual/audio streak only. */
 export function comboLabel(chainLength: number): ComboLabel {
   if (chainLength >= 4) return "ON FIRE";
   if (chainLength === 3) return "x3";
@@ -51,17 +54,31 @@ export function comboLabel(chainLength: number): ComboLabel {
   return null;
 }
 
-/** Point multiplier from unbroken dunk chain. */
-export function comboMultiplier(chainLength: number): number {
-  if (chainLength >= 4) return 4;
-  if (chainLength === 3) return 3;
-  if (chainLength === 2) return 2;
-  return 1;
+/**
+ * Classify dunk from per-flight flags.
+ * - swish: no wall bounce, no rim contact
+ * - bank: ≥1 screen-edge wall bounce
+ * - rim: rim contact without wall bounce (dirty +1)
+ */
+export function classifyDunk(flags: {
+  wallBounced: boolean;
+  rimTouched: boolean;
+}): DunkQuality {
+  if (!flags.wallBounced && !flags.rimTouched) return "swish";
+  if (flags.wallBounced) return "bank";
+  return "rim";
 }
 
-/** Points awarded for a dunk at the given chain length (after increment). */
-export function dunkPoints(chainLength: number): number {
-  return DUNK_BASE_POINTS * comboMultiplier(chainLength);
+/** Points awarded for a dunk by quality (swish ×2, else +1). */
+export function dunkPoints(quality: DunkQuality): number {
+  return quality === "swish" ? DUNK_BASE_POINTS * 2 : DUNK_BASE_POINTS;
+}
+
+/** Uppercase popup tag for dunk quality. */
+export function dunkQualityLabel(quality: DunkQuality): string {
+  if (quality === "swish") return "SWISH";
+  if (quality === "bank") return "BANK";
+  return "RIM";
 }
 
 /**
@@ -74,8 +91,8 @@ export function shouldSpawnStar(fromScore: number, rngUnit: number): boolean {
 }
 
 /**
- * Pure scoring reducer. Combo resets on miss and on continue accept (pitch-aligned).
- * Point total and stars persist across continue; decline is a no-op on counters.
+ * Pure scoring reducer. Chain resets on miss and on continue accept.
+ * Stars are soft-currency only (collectStar does not add run score).
  */
 export function reduceScoreEvent(
   state: ScoreState,
@@ -93,7 +110,7 @@ export function reduceScoreEvent(
       let next: ScoreState = {
         ...state,
         chainLength,
-        score: state.score + dunkPoints(chainLength),
+        score: state.score + dunkPoints(event.quality),
       };
       if (next.starActive) {
         next = {
@@ -110,7 +127,6 @@ export function reduceScoreEvent(
       return {
         ...state,
         stars: state.stars + 1,
-        score: state.score + STAR_POINTS,
         starActive: false,
       };
 

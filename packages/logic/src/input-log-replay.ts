@@ -119,7 +119,11 @@ function applyReplayFrame(
     case "through_hoop": {
       const hoop = reduceRunFSM(ctx, { type: "throughHoop" }, frame.t);
       if (!hoop.accepted) return { ctx, scoreState, side };
-      const nextScore = reduceScoreEvent(scoreState, { type: "dunk" });
+      // Replay logs lack flight quality; default bank (+1) for stable totals.
+      const nextScore = reduceScoreEvent(scoreState, {
+        type: "dunk",
+        quality: "bank",
+      });
       return { ctx: hoop.state, scoreState: nextScore, side };
     }
 
