@@ -1,27 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {GameEconomics} from "./GameEconomics.sol";
 import {ITournamentEscrow} from "./interfaces/ITournamentEscrow.sol";
+import {UpgradeableGoverned} from "./UpgradeableGoverned.sol";
 
 /**
  * @title TournamentEscrow
  * @notice Non-mainnet tournament escrow skeleton with transparent 85/15 settlement.
  * @dev This is an Alpha/Beta foundation and not the audited mainnet escrow.
  */
-contract TournamentEscrow is ITournamentEscrow, Ownable, Pausable, ReentrancyGuard {
+contract TournamentEscrow is ITournamentEscrow, UpgradeableGoverned {
     using SafeERC20 for IERC20;
 
     uint16 internal constant BPS_DENOMINATOR = 10_000;
 
     address public houseTreasury;
-    uint256 public nextTournamentId = 1;
+    uint256 public nextTournamentId;
 
     mapping(uint256 => Tournament) internal tournaments;
     mapping(uint256 => uint16[]) internal payoutCurves;
@@ -30,11 +28,13 @@ contract TournamentEscrow is ITournamentEscrow, Ownable, Pausable, ReentrancyGua
     mapping(uint256 => mapping(address => uint256)) internal claimableByPlayer;
     mapping(uint256 => uint256) internal claimableByTreasury;
 
-    constructor(address initialOwner, address initialTreasury) Ownable(initialOwner) {
+    function initialize(address initialOwner, address initialTreasury) external initializer {
+        __UpgradeableGoverned_init(initialOwner);
         if (initialTreasury == address(0)) {
             revert InvalidToken();
         }
         houseTreasury = initialTreasury;
+        nextTournamentId = 1;
     }
 
     function setHouseTreasury(address newTreasury) external onlyOwner {
@@ -44,14 +44,6 @@ contract TournamentEscrow is ITournamentEscrow, Ownable, Pausable, ReentrancyGua
         address oldTreasury = houseTreasury;
         houseTreasury = newTreasury;
         emit HouseTreasuryUpdated(oldTreasury, newTreasury);
-    }
-
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     function createTournament(

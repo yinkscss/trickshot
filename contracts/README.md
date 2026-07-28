@@ -36,6 +36,9 @@ The script writes deployment outputs to:
 
 - `contracts/deployments/celo-sepolia.json`
 
+Deployment output includes both implementation and proxy addresses.
+Integrations should use proxy addresses (`tournamentEscrow`, `powerupShop`, `continuePurchase`).
+
 ## Layout
 
 | Path | Purpose |

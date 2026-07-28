@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {UpgradeableGoverned} from "./UpgradeableGoverned.sol";
 
 /**
  * @title PowerupShop
  * @notice Testnet fixed-price powerup store paid in ERC-20 stablecoins.
  * @dev Deterministic purchases only. No RNG paths.
  */
-contract PowerupShop is Ownable, Pausable, ReentrancyGuard {
+contract PowerupShop is UpgradeableGoverned {
     using SafeERC20 for IERC20;
 
     struct Sku {
@@ -37,25 +35,18 @@ contract PowerupShop is Ownable, Pausable, ReentrancyGuard {
     event SkuUpdated(uint256 indexed skuId, uint256 price, bool active);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
 
-    IERC20 public immutable paymentToken;
+    IERC20 public paymentToken;
     address public treasury;
 
     mapping(uint256 => Sku) public skus;
 
-    constructor(address initialOwner, address token, address initialTreasury) Ownable(initialOwner) {
+    function initialize(address initialOwner, address token, address initialTreasury) external initializer {
+        __UpgradeableGoverned_init(initialOwner);
         if (token == address(0) || initialTreasury == address(0)) {
             revert InvalidToken();
         }
         paymentToken = IERC20(token);
         treasury = initialTreasury;
-    }
-
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     function setTreasury(address newTreasury) external onlyOwner {

@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {ContinuePurchase} from "../src/ContinuePurchase.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract ContinueBuyer {
     function approveToken(address token, address spender, uint256 amount) external {
@@ -21,7 +22,7 @@ contract ContinueBuyer {
 contract ContinuePurchaseTest {
     function test_continuePurchaseSuccessInCasualMode() public {
         MockERC20 token = new MockERC20();
-        ContinuePurchase store = new ContinuePurchase(address(this), address(token), address(this), 1 ether);
+        ContinuePurchase store = _deployProxyStore(token);
 
         ContinueBuyer buyer = new ContinueBuyer();
         token.mint(address(buyer), 3 ether);
@@ -34,7 +35,7 @@ contract ContinuePurchaseTest {
 
     function test_tournamentModeIsRejected() public {
         MockERC20 token = new MockERC20();
-        ContinuePurchase store = new ContinuePurchase(address(this), address(token), address(this), 1 ether);
+        ContinuePurchase store = _deployProxyStore(token);
 
         ContinueBuyer buyer = new ContinueBuyer();
         token.mint(address(buyer), 3 ether);
@@ -53,7 +54,7 @@ contract ContinuePurchaseTest {
 
     function test_pauseBlocksPurchase() public {
         MockERC20 token = new MockERC20();
-        ContinuePurchase store = new ContinuePurchase(address(this), address(token), address(this), 1 ether);
+        ContinuePurchase store = _deployProxyStore(token);
         store.pause();
 
         (bool ok,) = address(store).call(
@@ -68,7 +69,16 @@ contract ContinuePurchaseTest {
 
     function test_paymentTokenAddressIsPinned() public {
         MockERC20 token = new MockERC20();
-        ContinuePurchase store = new ContinuePurchase(address(this), address(token), address(this), 1 ether);
+        ContinuePurchase store = _deployProxyStore(token);
         assert(address(store.paymentToken()) == address(token));
+    }
+
+    function _deployProxyStore(MockERC20 token) internal returns (ContinuePurchase) {
+        ContinuePurchase impl = new ContinuePurchase();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeCall(ContinuePurchase.initialize, (address(this), address(token), address(this), 1 ether))
+        );
+        return ContinuePurchase(address(proxy));
     }
 }
