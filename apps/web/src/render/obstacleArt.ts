@@ -67,12 +67,20 @@ export function getObstacleSprite(
 /**
  * Draw a centered sprite if loaded. Returns true when art was used.
  * Caller falls back to procedural draw when false.
+ *
+ * Only disc-like kit types use a single sprite — gate/wall/spinner/etc. need
+ * segment geometry (e.g. gate gap). Stretching one PNG over `span` sealed the
+ * lane as a solid red bar.
  */
 export function tryDrawObstacleSprite(
   ctx: CanvasRenderingContext2D,
   o: Obstacle,
   timeMs: number,
 ): boolean {
+  if (o.type !== "bumper" && o.type !== "orbiter" && o.type !== "portal") {
+    return false;
+  }
+
   const pulse =
     (o.type === "bumper" || o.type === "orbiter") &&
     "pulse" in o &&
@@ -86,47 +94,20 @@ export function tryDrawObstacleSprite(
   let y = o.y;
   let w = 48;
   let h = 48;
-  let rot = 0;
 
-  if (o.type === "wall") {
-    w = o.w * 4;
-    h = o.h;
-  } else if (o.type === "bumper") {
+  if (o.type === "bumper") {
     w = h = o.r * 2.4;
   } else if (o.type === "orbiter") {
     x = o.cx ?? o.x;
     y = o.cy ?? o.y;
     w = h = o.r * 2.4;
-  } else if (o.type === "gate") {
-    w = o.span;
-    h = o.thick * 3;
-    rot = o.ang;
-  } else if (o.type === "spinner" || o.type === "pendulum") {
-    w = o.len;
-    h = o.thick * 3;
-    rot = o.type === "spinner" ? o.ang : 0;
-  } else if (o.type === "slider") {
-    w = o.len;
-    h = o.thick * 3;
-  } else if (o.type === "conveyor") {
-    w = o.len;
-    h = o.thick * 3;
-    rot = o.ang;
-  } else if (o.type === "wind") {
-    w = o.w;
-    h = o.hh;
-  } else if (o.type === "glass" || o.type === "laser") {
-    w = o.len;
-    h = o.thick * 3;
-    rot = o.ang;
-  } else if (o.type === "portal") {
+  } else {
     w = h = o.r * 2.4;
   }
 
   const bob = Math.sin(timeMs / 400) * 0.5;
   ctx.save();
   ctx.translate(x, y + bob);
-  if (rot) ctx.rotate(rot);
   ctx.globalAlpha = 0.92;
   ctx.drawImage(img, -w / 2, -h / 2, w, h);
   ctx.restore();
