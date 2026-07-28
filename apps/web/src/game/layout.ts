@@ -9,6 +9,13 @@ export type { LogicShotLayout as ShotLayout };
 
 export { generateShotLayout, layoutForSide };
 
-export function makeHoop(x: number, y: number, ang: number): Hoop {
-  return { x, y, ang, wobble: 0 };
+type HoopOsc = NonNullable<Hoop["osc"]>;
+
+export function makeHoop(
+  x: number,
+  y: number,
+  ang: number,
+  osc?: HoopOsc,
+): Hoop {
+  return { x, y, ang, wobble: 0, ...(osc ? { osc } : {}) };
 }
