@@ -22,4 +22,4 @@ From dunk-count tier 3+, the **goal hoop** oscillates (seeded horizontal or vert
 
 ## Obstacle art packs
 
-Per-type PNG sprites under `apps/web/public/obstacles/{type}/` preload via `obstacleArt.ts`. **Disc** kit types (`bumper`, `orbiter`, `portal`) draw the sprite when loaded; segment-based types (wall, gate, spinner, …) always use pitch procedural vectors so gaps and bar geometry stay correct.
+PNG packs under `apps/web/public/obstacles/{type}/` still preload via `obstacleArt.ts`, but **draw always uses pitch procedural vectors** in `pitchDraw.ts` (HTML pitch SoT). Single stretched sprites previously sealed gate gaps and skipped segment bodies.

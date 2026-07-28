@@ -24,7 +24,6 @@ import {
   STAR_LINE,
   VIOLET,
 } from "./colors";
-import { tryDrawObstacleSprite } from "./obstacleArt";
 import {
   drawMouthShade,
   drawNetHalf,
@@ -406,6 +405,33 @@ function wallSegs(o: Extract<Obstacle, { type: "wall" }>): Seg[] {
   return [[o.x, o.y - o.h / 2, o.x, o.y + o.h / 2]];
 }
 
+function barSeg(cx: number, cy: number, ang: number, half: number): Seg {
+  const c = Math.cos(ang);
+  const s = Math.sin(ang);
+  return [cx - c * half, cy - s * half, cx + c * half, cy + s * half];
+}
+
+function gateSegs(o: Extract<Obstacle, { type: "gate" }>): Seg[] {
+  if (o.segs?.length) return o.segs;
+  const c = Math.cos(o.ang);
+  const s = Math.sin(o.ang);
+  const g = o.gap / 2;
+  return [
+    [
+      o.x - c * (g + o.span),
+      o.y - s * (g + o.span),
+      o.x - c * g,
+      o.y - s * g,
+    ],
+    [
+      o.x + c * g,
+      o.y + s * g,
+      o.x + c * (g + o.span),
+      o.y + s * (g + o.span),
+    ],
+  ];
+}
+
 /** Pitch `drawObstacles` — all 12 kit types. Visual flow uses timeMs (not physics clock). */
 function drawObstacles(
   ctx: CanvasRenderingContext2D,
@@ -414,10 +440,11 @@ function drawObstacles(
 ): void {
   const perfT = timeMs / 1000;
   for (const o of obstacles) {
-    if (tryDrawObstacleSprite(ctx, o, timeMs)) continue;
+    // Always pitch procedural vectors (HTML pitch SoT). PNG packs preload for
+    // future use but must not replace segment geometry (sealed gate gaps).
     if (o.type === "wall" || o.type === "gate") {
       const thick = o.type === "wall" ? o.w : o.thick;
-      const segs = o.type === "wall" ? wallSegs(o) : o.segs ?? [];
+      const segs = o.type === "wall" ? wallSegs(o) : gateSegs(o);
       for (const s of segs) {
         roundCapBar(ctx, s[0], s[1], s[2], s[3], thick, RED);
       }
@@ -445,8 +472,7 @@ function drawObstacles(
       ctx.setLineDash([]);
       drawDisc(ctx, o.cx ?? o.x, o.cy ?? o.y, o.r, VIOLET, o.pulse, timeMs);
     } else if (o.type === "spinner") {
-      const s = o.segs?.[0];
-      if (!s) continue;
+      const s = o.segs?.[0] ?? barSeg(o.x, o.y, o.ang, o.len);
       roundCapBar(ctx, s[0], s[1], s[2], s[3], o.thick, VIOLET);
       ctx.beginPath();
       ctx.arc(o.x, o.y, 5, 0, Math.PI * 2);
@@ -472,7 +498,11 @@ function drawObstacles(
       ctx.fillStyle = "#42465a";
       ctx.fill();
     } else if (o.type === "slider") {
-      const s = o.segs?.[0];
+      const cx = o.cx ?? o.x;
+      const cy = o.cy ?? o.y;
+      const s =
+        o.segs?.[0] ??
+        barSeg(cx, cy, o.axis === "x" ? 0 : Math.PI / 2, o.len / 2);
       ctx.strokeStyle = "rgba(124,77,255,0.16)";
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 6]);
@@ -486,10 +516,9 @@ function drawObstacles(
       }
       ctx.stroke();
       ctx.setLineDash([]);
-      if (s) roundCapBar(ctx, s[0], s[1], s[2], s[3], o.thick, VIOLET);
+      roundCapBar(ctx, s[0], s[1], s[2], s[3], o.thick, VIOLET);
     } else if (o.type === "conveyor") {
-      const s = o.segs?.[0];
-      if (!s) continue;
+      const s = o.segs?.[0] ?? barSeg(o.x, o.y, o.ang, o.len);
       roundCapBar(ctx, s[0], s[1], s[2], s[3], o.thick, GREEN);
       const c = Math.cos(o.ang);
       const sn = Math.sin(o.ang);
@@ -538,8 +567,7 @@ function drawObstacles(
       }
     } else if (o.type === "glass") {
       if (!o.broken) {
-        const s = o.segs?.[0];
-        if (!s) continue;
+        const s = o.segs?.[0] ?? barSeg(o.x, o.y, o.ang, o.len / 2);
         ctx.strokeStyle = "rgba(143,203,255,0.55)";
         ctx.lineWidth = o.thick + 6;
         ctx.lineCap = "butt";
@@ -591,8 +619,7 @@ function drawObstacles(
       drawPortalRing(ctx, o.x, o.y, o.r, CYAN, o.spin);
       drawPortalRing(ctx, o.ex, o.ey, o.r, "#ff5ea8", -o.spin);
     } else if (o.type === "laser") {
-      const s = o.segs?.[0];
-      if (!s) continue;
+      const s = o.segs?.[0] ?? barSeg(o.x, o.y, o.ang, o.len / 2);
       const cyc = o.on + o.off;
       const phase = (((perfT + o.phase) % cyc) + cyc) % cyc;
       const live = o.live ?? phase < o.on;
