@@ -84,7 +84,6 @@ import {
   clientToCourt,
   kickNet,
   makeNet,
-  preloadObstacleArt,
   safeTopInset,
   safeBottomInset,
   spawnLaunchRings,
@@ -230,7 +229,6 @@ export class PlayLoop {
     this.running = true;
     this.syncSize();
     this.hud.showModePicker();
-    void preloadObstacleArt();
 
     this.canvas.addEventListener("pointerdown", this.onPointerDown);
     this.canvas.addEventListener("pointermove", this.onPointerMove);
@@ -906,6 +904,10 @@ export class PlayLoop {
         this.runFsm.runState === "flying")
     ) {
       stepHoopOsc(this.target, dt);
+      // Soft-currency star rides with the moving goal rim.
+      if (this.starPos && this.scoreState.starActive) {
+        this.starPos = { x: this.target.x, y: this.target.y - 34 };
+      }
     }
 
     if (this.runFsm.runState === "aiming" && this.source) {

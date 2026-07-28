@@ -24,7 +24,6 @@ import {
   STAR_LINE,
   VIOLET,
 } from "./colors";
-import { tryDrawObstacleSprite } from "./obstacleArt";
 import {
   drawMouthShade,
   drawNetHalf,
@@ -414,7 +413,6 @@ function drawObstacles(
 ): void {
   const perfT = timeMs / 1000;
   for (const o of obstacles) {
-    if (tryDrawObstacleSprite(ctx, o, timeMs)) continue;
     if (o.type === "wall" || o.type === "gate") {
       const thick = o.type === "wall" ? o.w : o.thick;
       const segs = o.type === "wall" ? wallSegs(o) : o.segs ?? [];

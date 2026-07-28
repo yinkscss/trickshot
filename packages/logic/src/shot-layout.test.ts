@@ -9,6 +9,7 @@ import {
   nextSide,
   shotRng,
   unlockedObstacleTypes,
+  stepHoopOsc,
   type Side,
 } from "./shot-layout.js";
 
@@ -207,5 +208,89 @@ describe("buildObstacles escalation", () => {
     const a = shotRng(daily, 1, 1, "daily").next();
     const b = shotRng(daily, 2, 1, "daily").next();
     assert.notEqual(a, b);
+  });
+});
+
+describe("moving rim (DunkShot-style goal osc)", () => {
+  it("attaches goal.osc from dunk-count tier 3+ (score ≥ 10)", () => {
+    const early = generateShotLayout({
+      side: 1,
+      score: 4,
+      seed: TEST_SEED,
+      mode: "casual",
+      width: W,
+      height: H,
+    });
+    assert.equal(early.goal.osc, undefined);
+
+    const moving = generateShotLayout({
+      side: 1,
+      score: 10,
+      seed: TEST_SEED,
+      mode: "casual",
+      width: W,
+      height: H,
+    });
+    assert.ok(moving.goal.osc);
+    assert.ok(moving.goal.osc!.amp > 0);
+    assert.ok(moving.goal.osc!.spd > 0);
+    assert.ok(
+      moving.goal.osc!.axis === "x" || moving.goal.osc!.axis === "y",
+    );
+  });
+
+  it("challenges mode never attaches goal osc", () => {
+    const layout = generateShotLayout({
+      side: 1,
+      score: 40,
+      seed: TEST_SEED,
+      mode: "challenges",
+      width: W,
+      height: H,
+    });
+    assert.equal(layout.goal.osc, undefined);
+  });
+
+  it("stepHoopOsc advances position with sin motion and freezes when cleared", () => {
+    const hoop = {
+      x: 100,
+      y: 200,
+      osc: {
+        axis: "x" as const,
+        amp: 20,
+        spd: 2,
+        phase: 0,
+        originX: 100,
+        originY: 200,
+      },
+    };
+    stepHoopOsc(hoop, Math.PI / 4);
+    assert.notEqual(hoop.x, 100);
+    assert.equal(hoop.y, 200);
+
+    hoop.osc = undefined;
+    const frozenX = hoop.x;
+    stepHoopOsc(hoop, 1);
+    assert.equal(hoop.x, frozenX);
+  });
+
+  it("same seed yields same osc axis/phase", () => {
+    const a = generateShotLayout({
+      side: 1,
+      score: 10,
+      seed: "rim-seed",
+      mode: "daily",
+      width: W,
+      height: H,
+    });
+    const b = generateShotLayout({
+      side: 1,
+      score: 10,
+      seed: "rim-seed",
+      mode: "daily",
+      width: W,
+      height: H,
+    });
+    assert.deepEqual(a.goal.osc, b.goal.osc);
   });
 });

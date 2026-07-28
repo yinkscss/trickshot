@@ -15,3 +15,7 @@ Authoritative feel docs remain [`animation-pitch.html`](./animation-pitch.html) 
 ## Aim preview vs obstacles
 
 Aim preview dots truncate at the first obstacle collision while still showing wall-bank highlights (fairness over the older pitch comment that omitted obstacle collision in preview).
+
+## Moving rim (DunkShot-style)
+
+From dunk-count tier 3+, the **goal hoop** oscillates (seeded horizontal or vertical sin motion) during aim/flight and freezes on dunk. This is the moving-rim hazard — not a new kit obstacle type and not sprite art packs. Endless still uses the existing procedural 0–1 kit obstacle when unlocked.
