@@ -4,3 +4,5 @@ Lock: `indexing=goldsky` (Subgraphs + Mirror).
 
 Alpha: no subgraph required yet (powerup shop + run API only).  
 Beta: index tournament escrow — pool close, 15% rake, payout curve events.
+
+See `infra/goldsky/tournament-escrow-events.md` for the event catalog and mapping notes.
