@@ -20,7 +20,9 @@
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts",
     "contracts:deploy:sepolia": "forge script contracts/script/DeploySepolia.s.sol:DeploySepolia --rpc-url celo_sepolia --broadcast --verify",
-    "contracts:deploy:sepolia:dry": "forge script contracts/script/DeploySepolia.s.sol:DeploySepolia --rpc-url celo_sepolia"
+    "contracts:deploy:sepolia:dry": "forge script contracts/script/DeploySepolia.s.sol:DeploySepolia --rpc-url celo_sepolia",
+    "contracts:deploy:mainnet": "forge script contracts/script/DeploySepolia.s.sol:DeploySepolia --rpc-url celo_mainnet --broadcast --verify",
+    "contracts:deploy:mainnet:dry": "forge script contracts/script/DeploySepolia.s.sol:DeploySepolia --rpc-url celo_mainnet"
   },
   "engines": {
     "node": ">=20"
