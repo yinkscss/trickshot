@@ -1,6 +1,15 @@
 import type { GameMode, RunSummary } from "@trickshot/shared";
 import type { LeaderboardEntry } from "../meta/leaderboard";
 import { continuesAllowedForMode } from "../meta/continuePolicy";
+import { isMuted } from "../audio";
+import {
+  COSMETIC_PRESETS,
+  equipPreset,
+  getEquippedPresetId,
+  getLifetimeStars,
+  isPresetUnlocked,
+  unlockAffordablePresets,
+} from "../meta/cosmetics";
 
 export type MetaHudCallbacks = {
   onSelectMode: (mode: GameMode) => void;
@@ -8,6 +17,8 @@ export type MetaHudCallbacks = {
   onEndRun: () => void;
   onDismissSummary: () => void;
   onPlayAgain: () => void;
+  onToggleMute?: () => boolean;
+  onEquipCosmetic?: (id: string) => void;
 };
 
 /**
@@ -29,6 +40,7 @@ export class MetaHud {
     this.root.innerHTML = `
       <div class="meta-chip-row">
         <div class="meta-chip" id="meta-mode-label">CASUAL</div>
+        <button type="button" class="meta-chip meta-mute" id="meta-mute-btn" aria-label="Toggle mute">🔊</button>
       </div>
       <div class="meta-panel" id="meta-mode" hidden>
         <h2>PLAY</h2>
@@ -37,6 +49,10 @@ export class MetaHud {
         <button type="button" data-mode="daily">Daily challenge</button>
         <button type="button" data-mode="challenges">Challenges</button>
         <button type="button" data-mode="tournament" class="ghost">Tournament (no continues)</button>
+        <div class="meta-cosmetics" id="meta-cosmetics">
+          <h3>BALL SKINS</h3>
+          <div id="meta-cosmetics-list"></div>
+        </div>
       </div>
       <div class="meta-panel" id="meta-continue" hidden>
         <h2>MISS</h2>
@@ -77,6 +93,38 @@ export class MetaHud {
     });
     this.root.querySelector("#meta-dismiss-btn")!.addEventListener("click", () => {
       this.cbs.onDismissSummary();
+    });
+    const muteBtn = this.root.querySelector("#meta-mute-btn") as HTMLButtonElement;
+    muteBtn.textContent = isMuted() ? "🔇" : "🔊";
+    muteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const muted = this.cbs.onToggleMute?.() ?? false;
+      muteBtn.textContent = muted ? "🔇" : "🔊";
+    });
+    this.refreshCosmetics();
+  }
+
+  refreshCosmetics(): void {
+    unlockAffordablePresets();
+    const list = this.root.querySelector("#meta-cosmetics-list");
+    if (!list) return;
+    const equipped = getEquippedPresetId();
+    const stars = getLifetimeStars();
+    list.innerHTML = COSMETIC_PRESETS.map((p) => {
+      const unlocked = isPresetUnlocked(p.id);
+      const label = unlocked
+        ? `${p.name}${equipped === p.id ? " ✓" : ""}`
+        : `${p.name} · ★${p.starCost}`;
+      return `<button type="button" class="ghost cosmetic-btn" data-cosmetic="${p.id}" ${unlocked ? "" : "disabled"}>${label}</button>`;
+    }).join("") + `<p class="meta-hint">Lifetime ★ ${stars}</p>`;
+    list.querySelectorAll("[data-cosmetic]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = (btn as HTMLElement).dataset.cosmetic!;
+        if (equipPreset(id)) {
+          this.cbs.onEquipCosmetic?.(id);
+          this.refreshCosmetics();
+        }
+      });
     });
   }
 
