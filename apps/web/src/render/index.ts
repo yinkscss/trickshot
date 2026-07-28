@@ -24,7 +24,6 @@ export {
   drawStarIcon,
   type PitchDrawState,
 } from "./pitchDraw";
-export { preloadObstacleArt, getObstacleSprite } from "./obstacleArt";
 export {
   makeNet,
   kickNet,
