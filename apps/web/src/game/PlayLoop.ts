@@ -84,6 +84,7 @@ import {
   clientToCourt,
   kickNet,
   makeNet,
+  preloadObstacleArt,
   safeTopInset,
   safeBottomInset,
   spawnLaunchRings,
@@ -229,6 +230,7 @@ export class PlayLoop {
     this.running = true;
     this.syncSize();
     this.hud.showModePicker();
+    void preloadObstacleArt();
 
     this.canvas.addEventListener("pointerdown", this.onPointerDown);
     this.canvas.addEventListener("pointermove", this.onPointerMove);

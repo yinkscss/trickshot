@@ -18,4 +18,8 @@ Aim preview dots truncate at the first obstacle collision while still showing wa
 
 ## Moving rim (DunkShot-style)
 
-From dunk-count tier 3+, the **goal hoop** oscillates (seeded horizontal or vertical sin motion) during aim/flight and freezes on dunk. This is the moving-rim hazard — not a new kit obstacle type and not sprite art packs. Endless still uses the existing procedural 0–1 kit obstacle when unlocked.
+From dunk-count tier 3+, the **goal hoop** oscillates (seeded horizontal or vertical sin motion) during aim/flight and freezes on dunk. This is a rim hazard (not a new kit obstacle type). Endless still uses the existing procedural 0–1 kit obstacle when unlocked.
+
+## Obstacle art packs
+
+Per-type PNG sprites under `apps/web/public/obstacles/{type}/` (idle + pulse where needed) preload via `obstacleArt.ts`. Canvas draws the sprite when loaded; otherwise falls back to the pitch procedural vectors in `pitchDraw.ts`.

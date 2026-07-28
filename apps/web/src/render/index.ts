@@ -32,6 +32,7 @@ export {
   type VerletNet,
 } from "./netVerlet";
 export { spawnLaunchRings, updateTrailEffects } from "./trailEffects";
+export { preloadObstacleArt, getObstacleSprite } from "./obstacleArt";
 export type {
   TrailParticle,
   LaunchRing,
