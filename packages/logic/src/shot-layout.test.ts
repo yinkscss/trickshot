@@ -188,7 +188,7 @@ describe("buildObstacles escalation", () => {
     );
     assert.equal(hard.length, 1);
     assert.equal(hard[0]!.type, "wall");
-    assert.equal((hard[0] as { h: number }).h, 100);
+    assert.equal((hard[0] as { h: number }).h, 150);
 
     const soft = buildObstacles(
       W * 0.22,
@@ -201,7 +201,7 @@ describe("buildObstacles escalation", () => {
       H,
     );
     assert.equal(soft[0]!.type, "wall");
-    assert.equal((soft[0] as { h: number }).h, 90);
+    assert.equal((soft[0] as { h: number }).h, 130);
   });
 
   it("shotRng differs per score while daily seed stays stable", () => {
@@ -213,7 +213,7 @@ describe("buildObstacles escalation", () => {
 });
 
 describe("moving rim (DunkShot-style goal osc)", () => {
-  it("attaches goal.osc from dunk-count tier 3+ (score ≥ 10)", () => {
+  it("attaches goal.osc from dunk-count tier 2+ (score ≥ 5)", () => {
     const early = generateShotLayout({
       side: 1,
       score: 4,
@@ -226,7 +226,7 @@ describe("moving rim (DunkShot-style goal osc)", () => {
 
     const moving = generateShotLayout({
       side: 1,
-      score: 10,
+      score: 5,
       seed: TEST_SEED,
       mode: "casual",
       width: W,
@@ -238,6 +238,23 @@ describe("moving rim (DunkShot-style goal osc)", () => {
     assert.ok(
       moving.goal.osc!.axis === "x" || moving.goal.osc!.axis === "y",
     );
+  });
+
+  it("horizontal swing keeps the rim inside the court at max tier", () => {
+    for (let i = 0; i < 200; i++) {
+      const layout = generateShotLayout({
+        side: i % 2 === 0 ? 1 : -1,
+        score: 60 + i,
+        seed: `swing-${i}`,
+        mode: "casual",
+        width: W,
+        height: H,
+      });
+      const osc = layout.goal.osc;
+      if (!osc || osc.axis !== "x") continue;
+      assert.ok(osc.originX - osc.amp >= 0, "rim swings past left edge");
+      assert.ok(osc.originX + osc.amp <= W, "rim swings past right edge");
+    }
   });
 
   it("challenges mode never attaches goal osc", () => {

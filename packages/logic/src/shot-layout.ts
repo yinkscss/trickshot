@@ -1,5 +1,5 @@
 import type { GameMode } from "@trickshot/shared";
-import type { Obstacle } from "@trickshot/physics";
+import { RIM_RX, type Obstacle } from "@trickshot/physics";
 import { createRng, type Rng } from "./rng.js";
 import { tierFromDunks, tierLayoutModifiers } from "./difficulty-tier.js";
 
@@ -155,8 +155,8 @@ function makeEndlessObstacle(
         type: "wall",
         x: midX + towardGoal * -offset,
         y: midY,
-        h: hard ? 100 : 90,
-        w: 7,
+        h: hard ? 150 : 130,
+        w: 12,
         segs: [],
         prev: null,
       };
@@ -165,7 +165,7 @@ function makeEndlessObstacle(
         type: "bumper",
         x: midX + jitter(),
         y: midY,
-        r: hard ? 24 : 22,
+        r: hard ? 30 : 27,
         pulse: 0,
         segs: [],
         prev: null,
@@ -178,7 +178,7 @@ function makeEndlessObstacle(
         gap: ps(hard ? 0.22 : 0.26),
         span: ps(0.28),
         ang: 0,
-        thick: 9,
+        thick: 12,
         segs: [],
         prev: null,
       };
@@ -190,7 +190,7 @@ function makeEndlessObstacle(
         len: ps(hard ? 0.18 : 0.15),
         spd: 1.8 + rng.next() * 0.8,
         ang: rng.next() * Math.PI,
-        thick: 9,
+        thick: 12,
         segs: [],
         prev: null,
       };
@@ -203,7 +203,7 @@ function makeEndlessObstacle(
         amp: 0.65 + rng.next() * 0.25,
         spd: 1.7 + rng.next() * 0.6,
         phase: rng.next() * Math.PI * 2,
-        thick: 9,
+        thick: 12,
         segs: [],
         prev: null,
       };
@@ -217,7 +217,7 @@ function makeEndlessObstacle(
         spd: 1.4 + rng.next() * 0.5,
         axis: rng.next() < 0.5 ? "x" : "y",
         phase: rng.next() * Math.PI * 2,
-        thick: 10,
+        thick: 13,
         segs: [],
         prev: null,
       };
@@ -343,6 +343,17 @@ export function buildObstacles(
   ];
 }
 
+/** Keep a horizontally swinging rim fully on court (rim half-width + margin). */
+function horizontalOscAmp(
+  goalX: number,
+  worldWidth: number,
+  range: number,
+): number {
+  const edge = RIM_RX + 8;
+  const room = Math.min(goalX - edge, worldWidth - edge - goalX);
+  return Math.max(0, Math.min(range, room));
+}
+
 /** Authoritative shot layout: zigzag hoops + zero or one obstacle. */
 export function generateShotLayout(input: GenerateShotLayoutInput): ShotLayout {
   const base = layoutForSide(
@@ -367,7 +378,10 @@ export function generateShotLayout(input: GenerateShotLayoutInput): ShotLayout {
     const axis: "x" | "y" = rng.next() < 0.5 ? "x" : "y";
     base.goal.osc = {
       axis,
-      amp: mods.moveRange,
+      amp:
+        axis === "x"
+          ? horizontalOscAmp(base.goal.x, input.width, mods.moveRange)
+          : mods.moveRange,
       spd: mods.moveSpeed,
       phase: rng.next() * Math.PI * 2,
       originX: base.goal.x,

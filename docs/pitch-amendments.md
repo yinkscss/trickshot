@@ -18,7 +18,11 @@ Aim preview dots truncate at the first obstacle collision while still showing wa
 
 ## Moving rim (DunkShot-style)
 
-From dunk-count tier 3+, the **goal hoop** oscillates (seeded horizontal or vertical sin motion) during aim/flight and freezes on dunk. This is a rim hazard (not a new kit obstacle type). Endless still uses the existing procedural 0–1 kit obstacle when unlocked.
+From dunk-count tier 2+ (**5 dunks**), the **goal hoop** oscillates (seeded horizontal or vertical sin motion) during aim/flight and freezes on dunk. Travel scales from ~52px at tier 2 to ~130px at tier 6; horizontal swings clamp to `RIM_RX + 8` from each rail so the rim never leaves the court. This is a rim hazard (not a new kit obstacle type). Endless still uses the existing procedural 0–1 kit obstacle when unlocked.
+
+## Obstacle scale (Dunk Shot reference)
+
+Endless kit obstacles are chunkier than the original pitch so they read at phone size: wall `w 7 → 12` / `h 90–100 → 130–150`, bumper `r 22–24 → 27–30`, and bar-type thickness `9–10 → 12–13`.
 
 ## Obstacle art packs
 

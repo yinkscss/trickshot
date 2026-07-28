@@ -30,12 +30,13 @@ describe("tierFromDunks", () => {
 describe("tierLayoutModifiers", () => {
   it("tier 1 never requests moving goal", () => {
     assert.equal(tierLayoutModifiers(1).movingGoal, false);
-    assert.equal(tierLayoutModifiers(2).movingGoal, false);
   });
 
-  it("tier 3+ enables moving goal", () => {
+  it("tier 2+ enables moving goal and escalates", () => {
+    assert.equal(tierLayoutModifiers(2).movingGoal, true);
     assert.equal(tierLayoutModifiers(3).movingGoal, true);
-    assert.ok(tierLayoutModifiers(6).moveSpeed > tierLayoutModifiers(3).moveSpeed);
+    assert.ok(tierLayoutModifiers(6).moveSpeed > tierLayoutModifiers(2).moveSpeed);
+    assert.ok(tierLayoutModifiers(6).moveRange > tierLayoutModifiers(2).moveRange);
   });
 
   it("hard bias from tier 4+", () => {

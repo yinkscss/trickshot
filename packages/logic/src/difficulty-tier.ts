@@ -53,9 +53,9 @@ export function tierLayoutModifiers(tier: DifficultyTier): TierLayoutModifiers {
         jitterScale: 1.25,
         obstacleChance: 1,
         hard: false,
-        movingGoal: false,
-        moveSpeed: 0,
-        moveRange: 0,
+        movingGoal: true,
+        moveSpeed: 1.3,
+        moveRange: 26,
       };
     case 3:
       return {
@@ -64,8 +64,8 @@ export function tierLayoutModifiers(tier: DifficultyTier): TierLayoutModifiers {
         obstacleChance: 1,
         hard: false,
         movingGoal: true,
-        moveSpeed: 1.6,
-        moveRange: 18,
+        moveSpeed: 1.7,
+        moveRange: 36,
       };
     case 4:
       return {
@@ -75,7 +75,7 @@ export function tierLayoutModifiers(tier: DifficultyTier): TierLayoutModifiers {
         hard: true,
         movingGoal: true,
         moveSpeed: 2.2,
-        moveRange: 26,
+        moveRange: 46,
       };
     case 5:
       return {
@@ -85,7 +85,7 @@ export function tierLayoutModifiers(tier: DifficultyTier): TierLayoutModifiers {
         hard: true,
         movingGoal: true,
         moveSpeed: 2.8,
-        moveRange: 34,
+        moveRange: 56,
       };
     case 6:
     default:
@@ -96,7 +96,7 @@ export function tierLayoutModifiers(tier: DifficultyTier): TierLayoutModifiers {
         hard: true,
         movingGoal: true,
         moveSpeed: 3.4,
-        moveRange: 42,
+        moveRange: 66,
       };
   }
 }
