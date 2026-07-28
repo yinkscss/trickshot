@@ -10,6 +10,7 @@ import {
   shotRng,
   unlockedObstacleTypes,
   stepHoopOsc,
+  type HoopOsc,
   type Side,
 } from "./shot-layout.js";
 
@@ -252,11 +253,11 @@ describe("moving rim (DunkShot-style goal osc)", () => {
   });
 
   it("stepHoopOsc advances position with sin motion and freezes when cleared", () => {
-    const hoop = {
+    const hoop: { x: number; y: number; osc?: HoopOsc } = {
       x: 100,
       y: 200,
       osc: {
-        axis: "x" as const,
+        axis: "x",
         amp: 20,
         spd: 2,
         phase: 0,
