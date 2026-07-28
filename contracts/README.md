@@ -20,6 +20,12 @@ forge test --root contracts
 cp contracts/.env.example .env
 ```
 
+For deployment-only usage (minimal secrets), prefer:
+
+```bash
+cp contracts/.env.deploy.example .env
+```
+
 1. Dry run script:
 
 ```bash
@@ -32,12 +38,29 @@ npm run contracts:deploy:sepolia:dry
 npm run contracts:deploy:sepolia
 ```
 
+Mainnet deploy (guarded):
+
+```bash
+ALLOW_MAINNET=true npm run contracts:deploy:mainnet
+```
+
+Use dry run first:
+
+```bash
+ALLOW_MAINNET=true npm run contracts:deploy:mainnet:dry
+```
+
 The script writes deployment outputs to:
 
 - `contracts/deployments/celo-sepolia.json`
+- `contracts/deployments/celo-mainnet.json`
 
 Deployment output includes both implementation and proxy addresses.
 Integrations should use proxy addresses (`tournamentEscrow`, `powerupShop`, `continuePurchase`).
+
+Mainnet handoff reference (addresses, tx hashes, verification links):
+
+- `contracts/deployments/celo-mainnet-handoff-2026-07-28.md`
 
 ## Layout
 
