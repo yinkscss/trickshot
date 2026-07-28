@@ -1,0 +1,11 @@
+{
+  "chainId": 42220,
+  "continuePurchase": "0x4Cca748Bb75039C4402bA8de13e7A3372235FF93",
+  "continuePurchaseImpl": "0x185475A05B9605E18C2d691dd23eCC6729c52855",
+  "deployedAt": "1785258365",
+  "network": "celo-mainnet",
+  "powerupShop": "0xB5699C2940aEF13DA72213A2623BE83228548Dd4",
+  "powerupShopImpl": "0xB856Ed599d8f989c7649E47D0f57Ef1Db4FE4a2a",
+  "tournamentEscrow": "0xe86aFBC33e46c61154119F965C406E4653C4bE68",
+  "tournamentEscrowImpl": "0x30bA59932f9952e88f911143ce13C0bAf8572690"
+}

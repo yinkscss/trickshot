@@ -18,7 +18,11 @@
     "typecheck": "npm run typecheck -w @trickshot/shared && npm run typecheck -w @trickshot/physics && npm run typecheck -w @trickshot/logic && npm run typecheck -w @trickshot/web",
     "test": "npm run build -w @trickshot/shared && npm run build -w @trickshot/physics && npm run build -w @trickshot/logic && npm run test -w @trickshot/shared --if-present && npm run test -w @trickshot/physics --if-present && npm run test -w @trickshot/logic --if-present && npm run test -w @trickshot/web --if-present",
     "contracts:build": "forge build --root contracts",
-    "contracts:test": "forge test --root contracts"
+    "contracts:test": "forge test --root contracts",
+    "contracts:deploy:sepolia": "forge script contracts/script/DeploySepolia.s.sol:DeploySepolia --rpc-url celo_sepolia --broadcast --verify",
+    "contracts:deploy:sepolia:dry": "forge script contracts/script/DeploySepolia.s.sol:DeploySepolia --rpc-url celo_sepolia",
+    "contracts:deploy:mainnet": "forge script contracts/script/DeploySepolia.s.sol:DeploySepolia --rpc-url celo_mainnet --broadcast --verify",
+    "contracts:deploy:mainnet:dry": "forge script contracts/script/DeploySepolia.s.sol:DeploySepolia --rpc-url celo_mainnet"
   },
   "engines": {
     "node": ">=20"
