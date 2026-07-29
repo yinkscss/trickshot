@@ -12,6 +12,7 @@
     "dev:api": "npm run dev -w @trickshot/api",
     "supabase:start": "npx supabase start",
     "supabase:status": "npx supabase status",
+    "supabase:reset": "npx supabase db reset",
     "build": "npm run build -w @trickshot/shared && npm run build -w @trickshot/physics && npm run build -w @trickshot/logic && npm run build -w @trickshot/web",
     "build:web": "npm run build -w @trickshot/shared && npm run build -w @trickshot/physics && npm run build -w @trickshot/logic && npm run build -w @trickshot/web",
     "build:api": "npm run build -w @trickshot/shared && npm run build -w @trickshot/api",

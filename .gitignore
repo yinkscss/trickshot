@@ -42,3 +42,8 @@ contracts/broadcast/
 .vite/
 .worktrees/
 .env*
+
+.agents/
+.claude/
+skills-lock.json
+issue.md
