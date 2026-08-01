@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+# Minimal permissions — read-only by default.
+# Individual jobs explicitly add what they need.
+permissions:
+  contents: read
+
+concurrency:
+  # Cancel in-progress CI runs for the same branch/PR to save runner time.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. TypeScript packages + Edge Function unit tests
+  # ---------------------------------------------------------------------------
+  packages:
+    name: Packages — typecheck + unit + edge tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (shared, physics, logic, web)
+        run: npm run typecheck
+
+      - name: Unit tests (shared, physics, logic)
+        run: npm test
+
+      - name: Edge Function tests (152 tests, no network)
+        # test:edge builds @trickshot/* dist/ first, then runs all handler.test.ts
+        # files via Node test runner + tsx. No Supabase instance required.
+        run: npm run test:edge
+
+  # ---------------------------------------------------------------------------
+  # 2. Web build sanity check (Vite PWA build must succeed)
+  # ---------------------------------------------------------------------------
+  web-build:
+    name: Web — Vite PWA build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web (stub Vite env vars)
+        # Real secrets are never committed. These stubs satisfy Vite's define
+        # step — the build output is not deployed from CI, only the artifact
+        # correctness matters. Staging deploy uses the real secrets.
+        env:
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: placeholder-anon-key
+          VITE_MAGIC_PUBLISHABLE_KEY: pk_live_placeholder
+          VITE_CELO_CHAIN_ID: "11142220"
+          VITE_CELO_RPC_URL: https://forno.celo-sepolia.celo-testnet.org
+        run: npm run build:web
+
+      - name: Upload dist artifact (optional, 1-day retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # 3. Foundry contracts (build + fmt + test)
+  # ---------------------------------------------------------------------------
+  contracts:
+    name: Contracts — Forge build + test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules for lib/)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Check Solidity formatting
+        working-directory: contracts
+        run: forge fmt --check
+
+      - name: Build contracts
+        working-directory: contracts
+        run: forge build --sizes
+
+      - name: Run Forge tests
+        working-directory: contracts
+        run: forge test -vvv

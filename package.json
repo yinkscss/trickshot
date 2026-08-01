@@ -18,6 +18,8 @@
     "build:api": "npm run build -w @trickshot/shared && npm run build -w @trickshot/api",
     "typecheck": "npm run typecheck -w @trickshot/shared && npm run typecheck -w @trickshot/physics && npm run typecheck -w @trickshot/logic && npm run typecheck -w @trickshot/web",
     "test": "npm run build -w @trickshot/shared && npm run build -w @trickshot/physics && npm run build -w @trickshot/logic && npm run test -w @trickshot/shared --if-present && npm run test -w @trickshot/physics --if-present && npm run test -w @trickshot/logic --if-present && npm run test -w @trickshot/web --if-present",
+    "build:edge": "npm run build -w @trickshot/shared && npm run build -w @trickshot/physics && npm run build -w @trickshot/logic",
+    "test:edge": "npm run build:edge && TSX_TSCONFIG_PATH=tsconfig.edge.json node --import tsx --test 'supabase/functions/_shared/*.test.ts' 'supabase/functions/auth-magic/*.test.ts' 'supabase/functions/runs-start/*.test.ts' 'supabase/functions/runs-finish/*.test.ts' 'supabase/functions/leaderboard/*.test.ts' 'supabase/functions/catalog/*.test.ts' 'supabase/functions/purchase-intent/*.test.ts' 'supabase/functions/purchase-confirm/*.test.ts' 'supabase/functions/inventory-use/*.test.ts' 'supabase/functions/challenge-progress/*.test.ts' 'supabase/functions/continue-intent/*.test.ts' 'supabase/functions/continue-confirm/*.test.ts'",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts",
     "contracts:deploy:sepolia": "forge script contracts/script/DeploySepolia.s.sol:DeploySepolia --rpc-url celo_sepolia --broadcast --verify",
@@ -28,5 +30,9 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "npm@10"
+  "packageManager": "npm@10",
+  "devDependencies": {
+    "jose": "^5.9.6",
+    "tsx": "^4.20.3"
+  }
 }

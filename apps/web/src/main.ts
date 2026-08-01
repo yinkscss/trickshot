@@ -1,5 +1,11 @@
 import { PlayLoop } from "./game/PlayLoop";
 import "./styles/meta.css";
+import { guardCeloSepolia } from "./services/auth.js";
+
+// Development-time network guard: warns when VITE_CELO_CHAIN_ID doesn't match
+// the locked Celo Sepolia testnet chain ID (11142220).
+guardCeloSepolia();
+
 
 const canvas = document.getElementById("game");
 if (!(canvas instanceof HTMLCanvasElement)) {

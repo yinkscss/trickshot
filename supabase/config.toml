@@ -423,3 +423,86 @@ entrypoint = "./functions/health/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/health/*.html" ]
+
+[functions.auth-magic]
+enabled = true
+# verify_jwt = false: callers do not have a Supabase JWT yet — this IS the
+# endpoint that issues the session token. The withSupabase({ auth: ["publishable"] })
+# wrapper still checks for the anon API key in the `apiKey` header.
+verify_jwt = false
+import_map = "./functions/auth-magic/deno.json"
+entrypoint = "./functions/auth-magic/index.ts"
+
+[functions.runs-start]
+enabled = true
+# verify_jwt = false: we verify our own custom JWT via requireAuth() in _shared/auth.ts.
+# withSupabase({ auth: ["publishable"] }) still checks the anon API key.
+verify_jwt = false
+import_map = "./functions/runs-start/deno.json"
+entrypoint = "./functions/runs-start/index.ts"
+
+[functions.runs-finish]
+enabled = true
+# verify_jwt = false: same as runs-start — custom JWT via requireAuth().
+verify_jwt = false
+import_map = "./functions/runs-finish/deno.json"
+entrypoint = "./functions/runs-finish/index.ts"
+
+[functions.leaderboard]
+enabled = true
+# verify_jwt = false: public endpoint — no session JWT required for reading scores.
+# withSupabase({ auth: ["publishable"] }) still requires the anon API key.
+verify_jwt = false
+import_map = "./functions/leaderboard/deno.json"
+entrypoint = "./functions/leaderboard/index.ts"
+
+[functions.catalog]
+enabled = true
+# verify_jwt = false: public catalog — no player session required.
+verify_jwt = false
+import_map = "./functions/catalog/deno.json"
+entrypoint = "./functions/catalog/index.ts"
+
+[functions.purchase-intent]
+enabled = true
+# verify_jwt = false: custom JWT via requireAuth().
+verify_jwt = false
+import_map = "./functions/purchase-intent/deno.json"
+entrypoint = "./functions/purchase-intent/index.ts"
+
+[functions.purchase-confirm]
+enabled = true
+# verify_jwt = false: custom JWT via requireAuth().
+# Fetches Celo Sepolia tx receipt — requires CELO_RPC_URL + POWERUP_SHOP_ADDRESS secrets.
+verify_jwt = false
+import_map = "./functions/purchase-confirm/deno.json"
+entrypoint = "./functions/purchase-confirm/index.ts"
+
+[functions.inventory-use]
+enabled = true
+# verify_jwt = false: custom JWT via requireAuth().
+verify_jwt = false
+import_map = "./functions/inventory-use/deno.json"
+entrypoint = "./functions/inventory-use/index.ts"
+
+[functions.challenge-progress]
+enabled = true
+# verify_jwt = false: custom JWT via requireAuth().
+verify_jwt = false
+import_map = "./functions/challenge-progress/deno.json"
+entrypoint = "./functions/challenge-progress/index.ts"
+
+[functions.continue-intent]
+enabled = true
+# verify_jwt = false: custom JWT via requireAuth().
+verify_jwt = false
+import_map = "./functions/continue-intent/deno.json"
+entrypoint = "./functions/continue-intent/index.ts"
+
+[functions.continue-confirm]
+enabled = true
+# verify_jwt = false: custom JWT via requireAuth().
+# Fetches Celo Sepolia tx receipt — requires CELO_RPC_URL + CONTINUE_PURCHASE_ADDRESS secrets.
+verify_jwt = false
+import_map = "./functions/continue-confirm/deno.json"
+entrypoint = "./functions/continue-confirm/index.ts"
