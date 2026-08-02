@@ -1,0 +1,19 @@
+feat: Implement core backend services (Auth, Runs, Shop, CI, Progress, Continues)
+
+This commit encompasses multiple issues and establishes the core Supabase backend infrastructure:
+
+- Issue #7: Bridged Magic.link sessions into Supabase via auth-magic Edge Function and JWT-based authentication.
+- Issue #8: Implemented runs-start/finish and leaderboard Edge Functions with hybrid replay verification using @trickshot/physics and @trickshot/logic.
+- Issue #9: Setup shop data plane (powerup_skus, purchase_intents, inventory, inventory_use_log) and Edge Functions for catalog, purchase intent/confirm (with on-chain verification), and inventory use.
+- Issue #10: Created CI/staging pipeline using GitHub Actions for PR gates, staging deployments, and smoke tests.
+- Issue #43: Implemented persistent challenge progress (level clears + stars) with RLS-safe RPCs and challenge-progress Edge Function.
+- Issue #52: Implemented continue-intent and continue-confirm Edge Functions with on-chain ContinuePurchased receipt verification, idempotency, and mode-based legal enforcement.
+
+Previous PR context included:
+- Schema migrations: users, runs, powerup_skus, inventory, purchases tables
+- RLS enabled on all tables (deny-by-default), zero anon/authenticated policies, explicit service_role grants
+- Seed data: 4 powerup SKUs with prices in cents
+- Health Edge Function: Deno-based, service_role DB round-trip, accepts publishable/secret API keys
+- config.toml: project_id=trickshot, edge_runtime enabled, Deno 2
+- Documentation: Local start/reset/env instructions in supabase/README.md
+- npm script: added 'supabase:reset' for convenience

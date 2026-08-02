@@ -1,0 +1,12 @@
+{
+  "imports": {
+    "@supabase/functions-js": "jsr:@supabase/functions-js@^2",
+    "@supabase/server": "npm:@supabase/server@^1",
+    "jose": "npm:jose@^5",
+    "viem": "npm:viem@^2",
+    "viem/chains": "npm:viem@^2/chains",
+    "@trickshot/shared": "../../packages/shared/dist/index.js",
+    "@trickshot/logic": "../../packages/logic/dist/index.js",
+    "@trickshot/physics": "../../packages/physics/dist/index.js"
+  }
+}

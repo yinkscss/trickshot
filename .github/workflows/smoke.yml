@@ -1,0 +1,75 @@
+name: Smoke — Staging
+
+on:
+  # Trigger after the staging deploy completes.
+  workflow_run:
+    workflows: ["Deploy — Staging (Supabase)"]
+    types: [completed]
+  # Allow manual re-runs (e.g. after a secrets change).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Allow writing commit statuses so the smoke result is visible on the commit.
+  statuses: write
+
+jobs:
+  smoke:
+    name: Smoke test — staging Edge Functions
+    runs-on: ubuntu-latest
+    # Only run when the deploy succeeded (skip on deploy failure).
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Health check
+        # GET /functions/v1/health — no auth required (verify_jwt = false, public)
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_STAGING_URL/functions/v1/health" \
+            -H "apikey: $SUPABASE_STAGING_ANON_KEY")
+
+          echo "health status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Health check failed (expected 200, got $STATUS)"
+            exit 1
+          fi
+          echo "✅ Health check passed"
+        env:
+          SUPABASE_STAGING_URL: ${{ secrets.SUPABASE_STAGING_URL }}
+          SUPABASE_STAGING_ANON_KEY: ${{ secrets.SUPABASE_STAGING_ANON_KEY }}
+
+      - name: Catalog check
+        # GET /functions/v1/catalog — no auth required; returns { skus: [...] }
+        run: |
+          BODY=$(curl -s \
+            "$SUPABASE_STAGING_URL/functions/v1/catalog" \
+            -H "apikey: $SUPABASE_STAGING_ANON_KEY")
+
+          echo "catalog response: $BODY"
+
+          # Check HTTP-level success first (re-request for status code)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_STAGING_URL/functions/v1/catalog" \
+            -H "apikey: $SUPABASE_STAGING_ANON_KEY")
+
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Catalog check failed (expected 200, got $STATUS)"
+            exit 1
+          fi
+
+          # Check that the response body contains the "skus" key
+          if ! echo "$BODY" | grep -q '"skus"'; then
+            echo "❌ Catalog response missing 'skus' key"
+            exit 1
+          fi
+
+          echo "✅ Catalog check passed"
+        env:
+          SUPABASE_STAGING_URL: ${{ secrets.SUPABASE_STAGING_URL }}
+          SUPABASE_STAGING_ANON_KEY: ${{ secrets.SUPABASE_STAGING_ANON_KEY }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Smoke test complete. Staging URL: $SUPABASE_STAGING_URL"
+        env:
+          SUPABASE_STAGING_URL: ${{ secrets.SUPABASE_STAGING_URL }}

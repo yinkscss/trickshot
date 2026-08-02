@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "paths": {
+      "@trickshot/shared": ["./packages/shared/dist/index.js"],
+      "@trickshot/logic": ["./packages/logic/dist/index.js"],
+      "@trickshot/physics": ["./packages/physics/dist/index.js"]
+    },
+    "strict": true,
+    "skipLibCheck": true
+  }
+}

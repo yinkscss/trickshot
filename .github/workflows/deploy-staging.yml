@@ -1,0 +1,93 @@
+name: Deploy — Staging (Supabase)
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      skip_migrations:
+        description: "Skip db push (migrations already applied)"
+        required: false
+        default: "false"
+        type: boolean
+
+# Minimal permissions — no write access needed; Supabase CLI auth is token-based.
+permissions:
+  contents: read
+
+# Only one staging deploy at a time — avoid concurrent migration races.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false  # never cancel an in-flight deploy
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Supabase: apply migrations + set secrets + deploy Edge Functions
+  # ---------------------------------------------------------------------------
+  deploy-supabase:
+    name: Supabase — migrations + functions
+    runs-on: ubuntu-latest
+    environment: staging   # GitHub environment (add protection rules in repo settings)
+    steps:
+      - name: Checkout (with submodules for contract ABIs if needed)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to staging Supabase project
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      - name: Apply pending migrations
+        if: ${{ inputs.skip_migrations != 'true' }}
+        run: |
+          supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      # Push Edge Function secrets to the staging project.
+      # These are sourced from GitHub Actions secrets — never logged or stored
+      # in the workflow YAML.
+      # supabase secrets set writes to the Supabase Vault; they are available
+      # as Deno.env.get() inside all Edge Functions.
+      - name: Set Edge Function secrets
+        run: |
+          supabase secrets set \
+            RUN_SIGNING_SECRET="${{ secrets.RUN_SIGNING_SECRET }}" \
+            MAGIC_SECRET_KEY="${{ secrets.MAGIC_SECRET_KEY }}" \
+            POWERUP_SHOP_ADDRESS="${{ secrets.POWERUP_SHOP_ADDRESS }}" \
+            CELO_RPC_URL="${{ secrets.CELO_RPC_URL }}" \
+            CELO_CHAIN_ID="${{ secrets.CELO_CHAIN_ID || '44787' }}"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      # Deploy all Edge Functions registered in supabase/config.toml.
+      # Functions: health, auth-magic, runs-start, runs-finish, leaderboard,
+      #            catalog, purchase-intent, purchase-confirm, inventory-use
+      - name: Deploy Edge Functions
+        run: |
+          supabase functions deploy
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+
+      - name: Print deploy summary
+        run: |
+          echo "✅ Supabase staging deploy complete"
+          echo "   Project : $SUPABASE_PROJECT_REF"
+          echo "   Ref     : ${{ github.sha }}"
+          echo "   Triggered by: ${{ github.event_name }}"
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}

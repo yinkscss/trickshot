@@ -11,9 +11,11 @@
     "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
     "@trickshot/logic": "*",
     "@trickshot/physics": "*",
-    "@trickshot/shared": "*"
+    "@trickshot/shared": "*",
+    "magic-sdk": "^28.12.0"
   },
   "devDependencies": {
     "tsx": "^4.20.3",
