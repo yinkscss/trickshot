@@ -757,13 +757,42 @@ function drawHint(ctx: CanvasRenderingContext2D, state: PitchDrawState): void {
   ctx.restore();
 }
 
+/** Court-space pause control — bottom-left, thumb-sized hit target. */
+export function pauseControlRect(
+  H: number,
+  safeBottom: number,
+): { x: number; y: number; w: number; h: number } {
+  const pauseY = H - 36 - Math.max(16, safeBottom);
+  return { x: 8, y: pauseY - 12, w: 44, h: 44 };
+}
+
+export function hitPauseControl(
+  courtX: number,
+  courtY: number,
+  H: number,
+  safeBottom: number,
+): boolean {
+  const r = pauseControlRect(H, safeBottom);
+  return (
+    courtX >= r.x &&
+    courtX <= r.x + r.w &&
+    courtY >= r.y &&
+    courtY <= r.y + r.h
+  );
+}
+
 function drawHUD(ctx: CanvasRenderingContext2D, state: PitchDrawState): void {
+  // Menu / boot — DOM landing owns the chrome; keep the court clean.
+  if (state.mode === "boot") return;
+
   const top = 26 + state.safeTop;
   // Pause — bottom-left (keeps top-left clear for mode chip / combo)
-  const pauseY = state.H - 36 - Math.max(16, state.safeBottom);
+  const pause = pauseControlRect(state.H, state.safeBottom);
+  const barX = pause.x + 12;
+  const barY = pause.y + 12;
   ctx.fillStyle = "#a4a8b0";
-  ctx.fillRect(20, pauseY, 5, 20);
-  ctx.fillRect(30, pauseY, 5, 20);
+  ctx.fillRect(barX, barY, 5, 20);
+  ctx.fillRect(barX + 10, barY, 5, 20);
 
   ctx.font = `900 ${Math.floor(state.W * 0.38)}px Nunito, sans-serif`;
   ctx.textAlign = "center";

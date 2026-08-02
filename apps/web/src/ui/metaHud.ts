@@ -19,18 +19,23 @@ export type MetaHudCallbacks = {
   onPlayAgain: () => void;
   onToggleMute?: () => boolean;
   onEquipCosmetic?: (id: string) => void;
+  onResume?: () => void;
+  onQuitToMenu?: () => void;
 };
 
 /**
- * Mobile-first DOM overlays: mode picker, miss/continue, run summary + board.
- * Kept out of Phaser so thumb targets stay CSS-safe-area friendly.
+ * Mobile-first DOM overlays: landing / mode picker, miss/continue, run summary.
+ * Kept out of the canvas so thumb targets stay CSS-safe-area friendly.
  */
 export class MetaHud {
   readonly root: HTMLDivElement;
   private modeEl: HTMLDivElement;
   private continueEl: HTMLDivElement;
   private summaryEl: HTMLDivElement;
+  private pauseEl: HTMLDivElement;
   private modeLabelEl: HTMLDivElement;
+  private skinsEl: HTMLDivElement;
+  private skinsToggle: HTMLButtonElement;
   private cbs: MetaHudCallbacks;
 
   constructor(parent: HTMLElement, cbs: MetaHudCallbacks) {
@@ -39,20 +44,35 @@ export class MetaHud {
     this.root.id = "meta-hud";
     this.root.innerHTML = `
       <div class="meta-chip-row">
-        <div class="meta-chip" id="meta-mode-label">CASUAL</div>
+        <div class="meta-chip" id="meta-mode-label" hidden>CASUAL</div>
         <button type="button" class="meta-chip meta-mute" id="meta-mute-btn" aria-label="Toggle mute">🔊</button>
       </div>
-      <div class="meta-panel" id="meta-mode" hidden>
-        <h2>PLAY</h2>
-        <p>Mobile-first chain dunks. Pick a mode.</p>
-        <button type="button" data-mode="casual">Casual</button>
-        <button type="button" data-mode="daily">Daily challenge</button>
-        <button type="button" data-mode="challenges">Challenges</button>
-        <button type="button" data-mode="tournament" class="ghost">Tournament (no continues)</button>
-        <div class="meta-cosmetics" id="meta-cosmetics">
-          <h3>BALL SKINS</h3>
-          <div id="meta-cosmetics-list"></div>
+      <div class="meta-landing" id="meta-mode" hidden>
+        <div class="meta-landing-glow" aria-hidden="true"></div>
+        <div class="meta-landing-brand">
+          <h1 class="meta-brand">TRICK <span>SHOT</span></h1>
+          <p class="meta-tagline">Drag. Dunk. Chain.</p>
         </div>
+        <div class="meta-landing-actions">
+          <button type="button" class="meta-play" data-mode="casual">Play</button>
+          <div class="meta-modes" role="group" aria-label="Game modes">
+            <button type="button" data-mode="daily">Daily</button>
+            <button type="button" data-mode="challenges">Challenges</button>
+            <button type="button" data-mode="tournament">Tournament</button>
+          </div>
+          <button type="button" class="meta-skins-toggle" id="meta-skins-toggle" aria-expanded="false">
+            Skins
+          </button>
+          <div class="meta-cosmetics" id="meta-cosmetics" hidden>
+            <div id="meta-cosmetics-list"></div>
+          </div>
+        </div>
+      </div>
+      <div class="meta-panel" id="meta-pause" hidden>
+        <h2>PAUSED</h2>
+        <p>Take a breath. Rim’s waiting.</p>
+        <button type="button" id="meta-resume-btn">Resume</button>
+        <button type="button" class="ghost" id="meta-quit-btn">Quit to menu</button>
       </div>
       <div class="meta-panel" id="meta-continue" hidden>
         <h2>MISS</h2>
@@ -74,13 +94,28 @@ export class MetaHud {
     this.modeEl = this.root.querySelector("#meta-mode")!;
     this.continueEl = this.root.querySelector("#meta-continue")!;
     this.summaryEl = this.root.querySelector("#meta-summary")!;
+    this.pauseEl = this.root.querySelector("#meta-pause")!;
     this.modeLabelEl = this.root.querySelector("#meta-mode-label")!;
+    this.skinsEl = this.root.querySelector("#meta-cosmetics")!;
+    this.skinsToggle = this.root.querySelector("#meta-skins-toggle")!;
 
     this.modeEl.querySelectorAll("[data-mode]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const mode = (btn as HTMLElement).dataset.mode as GameMode;
         this.cbs.onSelectMode(mode);
       });
+    });
+    this.skinsToggle.addEventListener("click", () => {
+      const open = this.skinsEl.hidden;
+      this.skinsEl.hidden = !open;
+      this.skinsToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      this.skinsToggle.classList.toggle("is-open", open);
+    });
+    this.root.querySelector("#meta-resume-btn")!.addEventListener("click", () => {
+      this.cbs.onResume?.();
+    });
+    this.root.querySelector("#meta-quit-btn")!.addEventListener("click", () => {
+      this.cbs.onQuitToMenu?.();
     });
     this.root.querySelector("#meta-continue-btn")!.addEventListener("click", () => {
       this.cbs.onContinueStub();
@@ -110,13 +145,16 @@ export class MetaHud {
     if (!list) return;
     const equipped = getEquippedPresetId();
     const stars = getLifetimeStars();
-    list.innerHTML = COSMETIC_PRESETS.map((p) => {
-      const unlocked = isPresetUnlocked(p.id);
-      const label = unlocked
-        ? `${p.name}${equipped === p.id ? " ✓" : ""}`
-        : `${p.name} · ★${p.starCost}`;
-      return `<button type="button" class="ghost cosmetic-btn" data-cosmetic="${p.id}" ${unlocked ? "" : "disabled"}>${label}</button>`;
-    }).join("") + `<p class="meta-hint">Lifetime ★ ${stars}</p>`;
+    list.innerHTML =
+      COSMETIC_PRESETS.map((p) => {
+        const unlocked = isPresetUnlocked(p.id);
+        const on = equipped === p.id;
+        const lock = unlocked ? "" : ` · ★${p.starCost}`;
+        return `<button type="button" class="cosmetic-btn${on ? " is-on" : ""}" data-cosmetic="${p.id}" ${unlocked ? "" : "disabled"} style="--skin:${p.ballCss}">
+          <span class="cosmetic-swatch" aria-hidden="true"></span>
+          <span>${p.name}${on ? " · on" : ""}${lock}</span>
+        </button>`;
+      }).join("") + `<p class="meta-hint">Lifetime ★ ${stars}</p>`;
     list.querySelectorAll("[data-cosmetic]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const id = (btn as HTMLElement).dataset.cosmetic!;
@@ -140,11 +178,31 @@ export class MetaHud {
   showModePicker(): void {
     this.continueEl.hidden = true;
     this.summaryEl.hidden = true;
+    this.pauseEl.hidden = true;
+    this.modeLabelEl.hidden = true;
+    this.skinsEl.hidden = true;
+    this.skinsToggle.setAttribute("aria-expanded", "false");
+    this.skinsToggle.classList.remove("is-open");
+    this.root.classList.add("is-landing");
     this.modeEl.hidden = false;
   }
 
   hideModePicker(): void {
     this.modeEl.hidden = true;
+    this.root.classList.remove("is-landing");
+    this.modeLabelEl.hidden = false;
+  }
+
+  showPause(): void {
+    this.modeEl.hidden = true;
+    this.root.classList.remove("is-landing");
+    this.continueEl.hidden = true;
+    this.summaryEl.hidden = true;
+    this.pauseEl.hidden = false;
+  }
+
+  hidePause(): void {
+    this.pauseEl.hidden = true;
   }
 
   showContinue(args: {
@@ -154,6 +212,9 @@ export class MetaHud {
     chainLength: number;
   }): void {
     this.modeEl.hidden = true;
+    this.root.classList.remove("is-landing");
+    this.modeLabelEl.hidden = false;
+    this.pauseEl.hidden = true;
     this.summaryEl.hidden = true;
     this.continueEl.hidden = false;
     const stats = this.root.querySelector("#meta-continue-stats")!;
@@ -181,6 +242,9 @@ export class MetaHud {
 
   showSummary(summary: RunSummary, board: LeaderboardEntry[]): void {
     this.modeEl.hidden = true;
+    this.root.classList.remove("is-landing");
+    this.modeLabelEl.hidden = false;
+    this.pauseEl.hidden = true;
     this.continueEl.hidden = true;
     this.summaryEl.hidden = false;
     const body = this.root.querySelector("#meta-summary-body")!;
