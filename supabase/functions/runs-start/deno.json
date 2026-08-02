@@ -3,7 +3,7 @@
     "@supabase/functions-js": "jsr:@supabase/functions-js@^2",
     "@supabase/server": "npm:@supabase/server@^1",
     "jose": "npm:jose@^5",
-    "@trickshot/shared": "../../packages/shared/dist/index.js",
-    "@trickshot/logic": "../../packages/logic/dist/index.js"
+    "@trickshot/shared": "../../../packages/shared/dist/index.js",
+    "@trickshot/logic": "../../../packages/logic/dist/index.js"
   }
 }

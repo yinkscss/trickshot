@@ -57,6 +57,7 @@ npm run contracts:test
 
 | Artifact | Link |
 |---|---|
+| Local development walkthrough | [docs/LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md) |
 | Stack lock | [docs/STACK_LOCK.md](docs/STACK_LOCK.md) |
 | Orchestrator gameplay prompt pack | [docs/gameplay-prompt-pack.html](docs/gameplay-prompt-pack.html) |
 | HTML PRD | [docs/prd.html](docs/prd.html) |
