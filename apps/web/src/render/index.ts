@@ -22,6 +22,8 @@ export {
   drawMarble,
   drawFireAura,
   drawStarIcon,
+  hitPauseControl,
+  pauseControlRect,
   type PitchDrawState,
 } from "./pitchDraw";
 export {

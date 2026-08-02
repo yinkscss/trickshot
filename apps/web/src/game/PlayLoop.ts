@@ -82,6 +82,7 @@ import {
   DirectCanvasRenderer,
   ambientForTier,
   clientToCourt,
+  hitPauseControl,
   kickNet,
   makeNet,
   preloadObstacleArt,
@@ -132,6 +133,7 @@ export class PlayLoop {
   private starPos: Vec2 | null = null;
   private tournamentId: string | null = null;
   private inMenu = true;
+  private paused = false;
   private comboFx: ComboFx | null = null;
   private dunkPopups: DunkPopup[] = [];
   private scoreRings: ScoreRing[] = [];
@@ -180,8 +182,15 @@ export class PlayLoop {
   private running = false;
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
+    if (e.code === "Escape" || e.code === "KeyP") {
+      if (this.inMenu) return;
+      e.preventDefault();
+      if (this.paused) this.resumeFromPause();
+      else this.openPause();
+      return;
+    }
     if (e.code !== "Space" && e.key !== " ") return;
-    if (!this.challengeActive || this.inMenu) return;
+    if (!this.challengeActive || this.inMenu || this.paused) return;
     e.preventDefault();
     this.challengeTapAdvance();
   };
@@ -211,12 +220,18 @@ export class PlayLoop {
     this.canvas = canvas;
     this.pitch = new DirectCanvasRenderer(canvas);
     this.hud = new MetaHud(hudParent, {
-      onSelectMode: (mode) => this.startMode(mode),
+      onSelectMode: (mode) => {
+        void Sfx.unlock().then(() => Music.start());
+        this.startMode(mode);
+      },
       onContinueStub: () => this.applyContinueStub(),
       onEndRun: () => this.declineContinue(),
       onDismissSummary: () => this.backToMenu(),
       onPlayAgain: () => this.backToMenu(),
+      onResume: () => this.resumeFromPause(),
+      onQuitToMenu: () => this.quitFromPause(),
       onToggleMute: () => {
+        void Sfx.unlock().then(() => Music.start());
         const muted = toggleMuted();
         Music.refreshMute();
         if (muted) Sfx.stopFlight();
@@ -291,6 +306,8 @@ export class PlayLoop {
 
   private startMode(mode: GameMode): void {
     this.inMenu = false;
+    this.paused = false;
+    this.hud.hidePause();
     this.runSeed =
       typeof globalThis.crypto?.randomUUID === "function"
         ? globalThis.crypto.randomUUID()
@@ -463,6 +480,7 @@ export class PlayLoop {
 
   private backToMenu(): void {
     this.inMenu = true;
+    this.paused = false;
     this.challengeActive = false;
     this.dragging = false;
     this.dragPt = null;
@@ -475,6 +493,7 @@ export class PlayLoop {
     this.comboFx = null;
     this.shake = 0;
     this.continueLabel = null;
+    this.hud.hidePause();
     this.hud.hideContinue();
     this.hud.hideSummary();
     this.hud.showModePicker();
@@ -482,6 +501,44 @@ export class PlayLoop {
     Music.setMenu(true);
     Music.setDucked(false);
     Music.setIntensity({ tier: 1, streak: 0 });
+  }
+
+  private canPause(): boolean {
+    if (this.inMenu || this.paused) return false;
+    if (this.challengeActive) {
+      return this.challengePhase === "aim" || this.challengePhase === "flying";
+    }
+    const s = this.runFsm.runState;
+    return (
+      s === "aiming" || s === "flying" || s === "transition" || s === "scored"
+    );
+  }
+
+  private openPause(): void {
+    if (!this.canPause()) return;
+    this.paused = true;
+    this.dragging = false;
+    this.dragPt = null;
+    Sfx.stopFlight();
+    Sfx.play("pause");
+    Music.setDucked(true);
+    this.hud.showPause();
+  }
+
+  private resumeFromPause(): void {
+    if (!this.paused) return;
+    this.paused = false;
+    this.hud.hidePause();
+    Music.setDucked(false);
+    Sfx.play("pause");
+  }
+
+  private quitFromPause(): void {
+    if (!this.paused) return;
+    this.paused = false;
+    this.hud.hidePause();
+    Music.setDucked(false);
+    this.backToMenu();
   }
 
   private resetNets(): void {
@@ -706,6 +763,16 @@ export class PlayLoop {
 
   private handleDown(clientX: number, clientY: number, time: number): void {
     if (this.inMenu) return;
+    if (this.paused) return;
+
+    const court = this.pointerCourt(clientX, clientY);
+    if (
+      this.canPause() &&
+      hitPauseControl(court.x, court.y, this.H, safeBottomInset())
+    ) {
+      this.openPause();
+      return;
+    }
 
     if (this.challengeActive) {
       if (this.challengePhase === "dead" || this.challengePhase === "won") {
@@ -857,6 +924,11 @@ export class PlayLoop {
     this.updateComboFx(dt);
 
     if (this.inMenu) {
+      this.drawFrame(time);
+      return;
+    }
+
+    if (this.paused) {
       this.drawFrame(time);
       return;
     }
@@ -1049,6 +1121,7 @@ export class PlayLoop {
       dur: chainLength >= 3 ? 0.85 : 0.65,
     };
     this.shake = shakeIntensity(chainLength);
+    Sfx.combo(chainLength);
     if (this.target) {
       spawnLaunchRings(this.rings, this.target.x, this.target.y);
       spawnLaunchRings(this.rings, this.target.x, this.target.y - 8);
