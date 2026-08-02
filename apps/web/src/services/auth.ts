@@ -37,6 +37,10 @@ export interface TrickshotSession {
   expiresAt: number;
 }
 
+export interface MagicRpcProvider {
+  request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+}
+
 // ---------------------------------------------------------------------------
 // Magic SDK singleton
 // ---------------------------------------------------------------------------
@@ -68,6 +72,16 @@ function initMagic(): Magic | null {
     },
   });
   return _magic;
+}
+
+/** Return Magic's EIP-1193-compatible provider for viem wallet requests. */
+export function getMagicRpcProvider(): MagicRpcProvider | null {
+  const magic = initMagic();
+  if (!magic) return null;
+  return {
+    request: ({ method, params }) =>
+      Promise.resolve(magic.rpcProvider.request({ method, params })),
+  };
 }
 
 // ---------------------------------------------------------------------------
