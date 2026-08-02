@@ -78,12 +78,13 @@ export class MetaHud {
         <h2>MISS</h2>
         <p class="meta-stats" id="meta-continue-stats"></p>
         <button type="button" id="meta-continue-btn">Continue</button>
-        <p class="meta-hint" id="meta-continue-hint">Sandbox stub — payments later</p>
+        <p class="meta-hint" id="meta-continue-hint" hidden></p>
         <button type="button" class="ghost" id="meta-end-btn">End run</button>
       </div>
       <div class="meta-panel" id="meta-summary" hidden>
-        <h2>RUN OVER</h2>
-        <pre id="meta-summary-body"></pre>
+        <h2>RESULTS</h2>
+        <p class="meta-summary-mode" id="meta-summary-mode"></p>
+        <div class="meta-stat-row" id="meta-summary-body"></div>
         <div id="meta-board"></div>
         <button type="button" id="meta-again-btn">Play again</button>
         <button type="button" class="ghost" id="meta-dismiss-btn">Close</button>
@@ -224,15 +225,15 @@ export class MetaHud {
     const hint = this.root.querySelector("#meta-continue-hint") as HTMLElement;
     const allowed = continuesAllowedForMode(args.mode);
     btn.hidden = !allowed;
-    hint.hidden = !allowed;
     if (!allowed) {
       hint.hidden = false;
       hint.textContent =
         args.mode === "challenges"
-          ? "Challenges — tap / space to retry"
-          : "Tournament — continues disabled";
+          ? "Tap or press space to retry"
+          : "Continues are off in Tournament";
     } else {
-      hint.textContent = "Sandbox stub — payments later";
+      hint.hidden = true;
+      hint.textContent = "";
     }
   }
 
@@ -247,25 +248,33 @@ export class MetaHud {
     this.pauseEl.hidden = true;
     this.continueEl.hidden = true;
     this.summaryEl.hidden = false;
+
+    const modeEl = this.root.querySelector("#meta-summary-mode")!;
+    modeEl.textContent = modeLabel(summary.mode);
+
     const body = this.root.querySelector("#meta-summary-body")!;
-    body.textContent = [
-      `mode: ${summary.mode}`,
-      `score: ${summary.score}`,
-      `stars: ${summary.stars}`,
-      `chain: ${summary.chainLength}`,
-      `continues: ${summary.continuesUsed}`,
-      `seed: ${summary.seed}`,
-    ].join("\n");
+    body.innerHTML = [
+      statCell(String(summary.score), "Score"),
+      statCell(`★ ${summary.stars}`, "Stars"),
+      statCell(
+        summary.chainLength > 0 ? `x${summary.chainLength}` : "—",
+        "Best chain",
+      ),
+    ].join("");
+
     const boardEl = this.root.querySelector("#meta-board")!;
     if (summary.mode === "tournament" || board.length === 0) {
       boardEl.innerHTML = "";
       return;
     }
     boardEl.innerHTML =
-      `<h3>Local ${summary.mode}</h3><ol>` +
+      `<h3>Top scores</h3><ol class="meta-board-list">` +
       board
         .slice(0, 5)
-        .map((e) => `<li>${e.score} · ★${e.stars} · x${e.chainLength}</li>`)
+        .map(
+          (e, i) =>
+            `<li><span class="meta-board-rank">${i + 1}</span><span class="meta-board-score">${e.score}</span><span class="meta-board-meta">★${e.stars}${e.chainLength > 0 ? ` · x${e.chainLength}` : ""}</span></li>`,
+        )
         .join("") +
       `</ol>`;
   }
@@ -277,4 +286,23 @@ export class MetaHud {
   destroy(): void {
     this.root.remove();
   }
+}
+
+function modeLabel(mode: GameMode): string {
+  switch (mode) {
+    case "casual":
+      return "Casual";
+    case "daily":
+      return "Daily challenge";
+    case "challenges":
+      return "Challenges";
+    case "tournament":
+      return "Tournament";
+    default:
+      return mode;
+  }
+}
+
+function statCell(value: string, label: string): string {
+  return `<div class="meta-stat"><strong>${value}</strong><span>${label}</span></div>`;
 }

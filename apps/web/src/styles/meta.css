@@ -339,24 +339,77 @@
   display: none !important;
 }
 
-#meta-hud pre {
-  text-align: left;
-  background: #12141a;
-  color: #c5cad8;
-  border-radius: 10px;
-  padding: 0.7rem 0.8rem;
-  font-size: 0.72rem;
-  overflow: auto;
-  margin: 0;
+#meta-hud .meta-summary-mode {
+  margin: -0.15rem 0 0.85rem !important;
+  font-size: 0.82rem !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute);
 }
 
-#meta-hud ol {
+#meta-hud .meta-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+  margin: 0 0 0.35rem;
+}
+
+#meta-hud .meta-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.65rem 0.35rem;
+  border-radius: 12px;
+  background: rgba(26, 28, 34, 0.06);
+}
+
+#meta-hud .meta-stat strong {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1;
+}
+
+#meta-hud .meta-stat span {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+#meta-hud .meta-board-list {
+  list-style: none;
   text-align: left;
-  margin: 0;
-  padding-left: 1.2rem;
+  margin: 0.35rem 0 0.15rem;
+  padding: 0;
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--mute);
+}
+
+#meta-hud .meta-board-list li {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.35rem 0.15rem;
+  border-top: 1px solid rgba(26, 28, 34, 0.08);
+}
+
+#meta-hud .meta-board-rank {
+  color: var(--ink);
+  font-weight: 900;
+}
+
+#meta-hud .meta-board-score {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+#meta-hud .meta-board-meta {
+  font-size: 0.78rem;
 }
 
 @keyframes meta-rise {
