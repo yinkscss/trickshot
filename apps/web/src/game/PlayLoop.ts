@@ -77,6 +77,8 @@ import {
   type ScoreRing,
 } from "../meta";
 import { MetaHud } from "../ui/metaHud";
+import { login, logout } from "../services/auth";
+import { ensureCeloNetwork } from "../services/wallet";
 import { Music, Sfx, toggleMuted } from "../audio";
 import {
   DirectCanvasRenderer,
@@ -230,6 +232,17 @@ export class PlayLoop {
       onPlayAgain: () => this.backToMenu(),
       onResume: () => this.resumeFromPause(),
       onQuitToMenu: () => this.quitFromPause(),
+      onLogin: async (email) => {
+        const session = await login(email);
+        try {
+          await ensureCeloNetwork();
+          return session;
+        } catch (error) {
+          await logout();
+          throw error;
+        }
+      },
+      onLogout: () => logout(),
       onToggleMute: () => {
         void Sfx.unlock().then(() => Music.start());
         const muted = toggleMuted();

@@ -15,7 +15,8 @@
     "@trickshot/logic": "*",
     "@trickshot/physics": "*",
     "@trickshot/shared": "*",
-    "magic-sdk": "^33.10.0"
+    "magic-sdk": "^33.10.0",
+    "viem": "^2.55.10"
   },
   "devDependencies": {
     "tsx": "^4.20.3",

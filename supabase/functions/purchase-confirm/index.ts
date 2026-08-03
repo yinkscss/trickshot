@@ -18,7 +18,7 @@ import { verifyPowerupReceipt } from "./receipt-verifier.ts";
  *
  * Idempotent: duplicate confirm for the same (txHash, logIndex) → 200, no double-credit.
  *
- * On-chain verification via Celo Sepolia RPC (CELO_RPC_URL env var).
+ * On-chain verification via the configured Celo RPC (CELO_RPC_URL env var).
  * Contract address: POWERUP_SHOP_ADDRESS env var.
  */
 export default {
@@ -140,7 +140,7 @@ export default {
 
   1. npx supabase start && npx supabase db reset
   2. Get session JWT + create a purchase intent
-  3. Broadcast the PowerupShop.buy() tx on Celo Sepolia
+   3. Broadcast the PowerupShop.buy() tx on the configured Celo network
   4. Get the txHash + logIndex from the receipt
 
   curl -i -X POST 'http://127.0.0.1:54321/functions/v1/purchase-confirm' \

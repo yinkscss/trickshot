@@ -473,7 +473,7 @@ entrypoint = "./functions/purchase-intent/index.ts"
 [functions.purchase-confirm]
 enabled = true
 # verify_jwt = false: custom JWT via requireAuth().
-# Fetches Celo Sepolia tx receipt — requires CELO_RPC_URL + POWERUP_SHOP_ADDRESS secrets.
+# Fetches configured Celo tx receipt — requires CELO_RPC_URL + POWERUP_SHOP_ADDRESS secrets.
 verify_jwt = false
 import_map = "./functions/purchase-confirm/deno.json"
 entrypoint = "./functions/purchase-confirm/index.ts"
@@ -502,7 +502,7 @@ entrypoint = "./functions/continue-intent/index.ts"
 [functions.continue-confirm]
 enabled = true
 # verify_jwt = false: custom JWT via requireAuth().
-# Fetches Celo Sepolia tx receipt — requires CELO_RPC_URL + CONTINUE_PURCHASE_ADDRESS secrets.
+# Fetches configured Celo tx receipt — requires CELO_RPC_URL + CONTINUE_PURCHASE_ADDRESS secrets.
 verify_jwt = false
 import_map = "./functions/continue-confirm/deno.json"
 entrypoint = "./functions/continue-confirm/index.ts"

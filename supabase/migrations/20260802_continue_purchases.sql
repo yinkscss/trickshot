@@ -1,4 +1,4 @@
--- Migration: 20260801_continue_purchases.sql
+-- Migration: 20260802_continue_purchases.sql
 -- Issue #52: Continue purchase confirm Edge Function & ledger (idempotent)
 --
 -- Product & legal constraints:

@@ -67,8 +67,9 @@ jobs:
             RUN_SIGNING_SECRET="${{ secrets.RUN_SIGNING_SECRET }}" \
             MAGIC_SECRET_KEY="${{ secrets.MAGIC_SECRET_KEY }}" \
             POWERUP_SHOP_ADDRESS="${{ secrets.POWERUP_SHOP_ADDRESS }}" \
+            CONTINUE_PURCHASE_ADDRESS="${{ secrets.CONTINUE_PURCHASE_ADDRESS }}" \
             CELO_RPC_URL="${{ secrets.CELO_RPC_URL }}" \
-            CELO_CHAIN_ID="${{ secrets.CELO_CHAIN_ID || '44787' }}"
+            CELO_CHAIN_ID="${{ secrets.CELO_CHAIN_ID || '11142220' }}"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}

@@ -1,6 +1,7 @@
 import type { GameMode, RunSummary } from "@trickshot/shared";
 import type { LeaderboardEntry } from "../meta/leaderboard";
 import { continuesAllowedForMode } from "../meta/continuePolicy";
+import { getSession, type TrickshotSession } from "../services/auth";
 import { isMuted } from "../audio";
 import {
   COSMETIC_PRESETS,
@@ -21,6 +22,8 @@ export type MetaHudCallbacks = {
   onEquipCosmetic?: (id: string) => void;
   onResume?: () => void;
   onQuitToMenu?: () => void;
+  onLogin?: (email: string) => Promise<TrickshotSession>;
+  onLogout?: () => Promise<void>;
 };
 
 /**
@@ -34,6 +37,12 @@ export class MetaHud {
   private summaryEl: HTMLDivElement;
   private pauseEl: HTMLDivElement;
   private modeLabelEl: HTMLDivElement;
+  private accountButton: HTMLButtonElement;
+  private accountPanel: HTMLDivElement;
+  private loginForm: HTMLFormElement;
+  private loginEmail: HTMLInputElement;
+  private logoutButton: HTMLButtonElement;
+  private accountStatus: HTMLParagraphElement;
   private skinsEl: HTMLDivElement;
   private skinsToggle: HTMLButtonElement;
   private cbs: MetaHudCallbacks;
@@ -45,6 +54,18 @@ export class MetaHud {
     this.root.innerHTML = `
       <div class="meta-chip-row">
         <div class="meta-chip" id="meta-mode-label" hidden>CASUAL</div>
+        <div class="meta-account" id="meta-account">
+          <button type="button" class="meta-chip meta-account-button" id="meta-account-btn">Sign in</button>
+          <div class="meta-account-panel" id="meta-account-panel" hidden>
+            <form id="meta-login-form">
+              <label for="meta-login-email">Email</label>
+              <input id="meta-login-email" name="email" type="email" autocomplete="email" required />
+              <button type="submit">Continue</button>
+            </form>
+            <button type="button" id="meta-logout-btn" hidden>Sign out</button>
+            <p id="meta-account-status" role="status" aria-live="polite"></p>
+          </div>
+        </div>
         <button type="button" class="meta-chip meta-mute" id="meta-mute-btn" aria-label="Toggle mute">🔊</button>
       </div>
       <div class="meta-landing" id="meta-mode" hidden>
@@ -97,6 +118,12 @@ export class MetaHud {
     this.summaryEl = this.root.querySelector("#meta-summary")!;
     this.pauseEl = this.root.querySelector("#meta-pause")!;
     this.modeLabelEl = this.root.querySelector("#meta-mode-label")!;
+    this.accountButton = this.root.querySelector("#meta-account-btn")!;
+    this.accountPanel = this.root.querySelector("#meta-account-panel")!;
+    this.loginForm = this.root.querySelector("#meta-login-form")!;
+    this.loginEmail = this.root.querySelector("#meta-login-email")!;
+    this.logoutButton = this.root.querySelector("#meta-logout-btn")!;
+    this.accountStatus = this.root.querySelector("#meta-account-status")!;
     this.skinsEl = this.root.querySelector("#meta-cosmetics")!;
     this.skinsToggle = this.root.querySelector("#meta-skins-toggle")!;
 
@@ -111,6 +138,17 @@ export class MetaHud {
       this.skinsEl.hidden = !open;
       this.skinsToggle.setAttribute("aria-expanded", open ? "true" : "false");
       this.skinsToggle.classList.toggle("is-open", open);
+    });
+    this.accountButton.addEventListener("click", () => {
+      this.accountPanel.hidden = !this.accountPanel.hidden;
+      if (!this.accountPanel.hidden && !getSession()) this.loginEmail.focus();
+    });
+    this.loginForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void this.handleLogin();
+    });
+    this.logoutButton.addEventListener("click", () => {
+      void this.handleLogout();
     });
     this.root.querySelector("#meta-resume-btn")!.addEventListener("click", () => {
       this.cbs.onResume?.();
@@ -137,7 +175,59 @@ export class MetaHud {
       const muted = this.cbs.onToggleMute?.() ?? false;
       muteBtn.textContent = muted ? "🔇" : "🔊";
     });
+    this.setAuthSession(getSession());
     this.refreshCosmetics();
+  }
+
+  private async handleLogin(): Promise<void> {
+    if (!this.cbs.onLogin) {
+      this.accountStatus.textContent = "Login is unavailable";
+      return;
+    }
+    const email = this.loginEmail.value.trim();
+    if (!email) return;
+
+    const submit = this.loginForm.querySelector("button[type=submit]") as HTMLButtonElement;
+    submit.disabled = true;
+    this.accountStatus.textContent = "Connecting...";
+    try {
+      const session = await this.cbs.onLogin(email);
+      this.setAuthSession(session);
+      this.accountPanel.hidden = true;
+    } catch (error) {
+      this.accountStatus.textContent = error instanceof Error ? error.message : "Login failed";
+    } finally {
+      submit.disabled = false;
+    }
+  }
+
+  private async handleLogout(): Promise<void> {
+    if (!this.cbs.onLogout) return;
+    this.logoutButton.disabled = true;
+    try {
+      await this.cbs.onLogout();
+      this.setAuthSession(null);
+    } catch (error) {
+      this.accountStatus.textContent = error instanceof Error ? error.message : "Logout failed";
+    } finally {
+      this.logoutButton.disabled = false;
+    }
+  }
+
+  private setAuthSession(session: TrickshotSession | null): void {
+    if (session) {
+      this.accountButton.textContent = shortAddress(session.walletAddress);
+      this.accountButton.title = session.walletAddress;
+      this.loginForm.hidden = true;
+      this.logoutButton.hidden = false;
+      this.accountStatus.textContent = "Wallet connected";
+      return;
+    }
+    this.accountButton.textContent = "Sign in";
+    this.accountButton.removeAttribute("title");
+    this.loginForm.hidden = false;
+    this.logoutButton.hidden = true;
+    this.accountStatus.textContent = "";
   }
 
   refreshCosmetics(): void {
@@ -286,6 +376,10 @@ export class MetaHud {
   destroy(): void {
     this.root.remove();
   }
+}
+
+function shortAddress(address: string): string {
+  return address.length > 12 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address;
 }
 
 function modeLabel(mode: GameMode): string {

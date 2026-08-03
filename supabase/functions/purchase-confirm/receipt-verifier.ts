@@ -1,7 +1,7 @@
 /**
  * On-chain PowerupPurchased receipt verifier (issue #9).
  *
- * Fetches the tx receipt from Celo Sepolia and decodes the PowerupPurchased
+ * Fetches the tx receipt from the configured Celo network and decodes the PowerupPurchased
  * event at the given log index. This module is the ONLY place in the codebase
  * that touches viem / makes RPC calls for the shop flow.
  *
@@ -21,6 +21,10 @@
  */
 
 import type { ReceiptVerification } from "./handler.ts";
+import {
+  celoChainName,
+  parseCeloChainId,
+} from "../_shared/celo-network.ts";
 
 // PowerupPurchased ABI fragment — minimal, viem compatible
 const POWERUP_PURCHASED_ABI = [
@@ -54,15 +58,14 @@ export async function verifyPowerupReceipt(
   // Dynamic import of viem (resolved by the deno.json import map)
   // Dynamic import keeps this module tree-shakeable and avoids loading
   // viem in test contexts that mock this entire module.
-  const { createPublicClient, http, decodeEventLog } = await import("viem");
-  const { celoAlfajores } = await import("viem/chains");
-
-  // Celo Sepolia chainId = 44787 (Alfajores) — Celo's public testnet.
-  // Note: packages/shared CELO_SEPOLIA_CHAIN_ID = 11142220 refers to a
-  // different naming convention; the viem chain object uses 44787.
-  // Env var CELO_CHAIN_ID can override for flexibility.
-  const chainId = parseInt(Deno.env.get("CELO_CHAIN_ID") ?? "44787", 10);
-  const chain = chainId === 44787 ? celoAlfajores : celoAlfajores; // extend for mainnet
+  const { createPublicClient, http, decodeEventLog, defineChain } = await import("viem");
+  const chainId = parseCeloChainId(Deno.env.get("CELO_CHAIN_ID"));
+  const chain = defineChain({
+    id: chainId,
+    name: celoChainName(chainId),
+    nativeCurrency: { name: "CELO", symbol: "CELO", decimals: 18 },
+    rpcUrls: { default: { http: [rpcUrl] } },
+  });
 
   const client = createPublicClient({
     chain,
@@ -72,6 +75,13 @@ export async function verifyPowerupReceipt(
   // Fetch the receipt
   let receipt: Awaited<ReturnType<typeof client.getTransactionReceipt>>;
   try {
+    const rpcChainId = await client.getChainId();
+    if (rpcChainId !== chainId) {
+      return {
+        ok: false,
+        reason: `RPC chain ID ${rpcChainId} does not match configured Celo chain ${chainId}`,
+      };
+    }
     receipt = await client.getTransactionReceipt({
       hash: txHash as `0x${string}`,
     });

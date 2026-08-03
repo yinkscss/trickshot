@@ -6,7 +6,7 @@
  * returns 200 without double-crediting.
  *
  * On-chain verification:
- *   - Fetch tx receipt from Celo Sepolia RPC
+ *   - Fetch tx receipt from the configured Celo RPC
  *   - Find the PowerupPurchased log at logIndex
  *   - Validate: buyer === user's wallet, skuId === intent.onChainSkuId,
  *     amount === intent.quantity

@@ -36,6 +36,80 @@
   font: inherit;
 }
 
+#meta-hud .meta-account {
+  position: relative;
+  pointer-events: auto;
+}
+
+#meta-hud .meta-account-button {
+  border: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+#meta-hud .meta-account-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: min(16rem, calc(100vw - 2rem));
+  padding: 0.75rem;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 6px 0 rgba(26, 28, 34, 0.14);
+  text-align: left;
+}
+
+#meta-hud .meta-account-panel[hidden] {
+  display: none !important;
+}
+
+#meta-hud .meta-account-panel form {
+  display: grid;
+  gap: 0.4rem;
+}
+
+#meta-hud .meta-account-panel label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--mute);
+}
+
+#meta-hud .meta-account-panel input {
+  width: 100%;
+  min-height: 2.4rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(26, 28, 34, 0.22);
+  border-radius: 8px;
+  font: inherit;
+}
+
+#meta-hud .meta-account-panel button {
+  width: 100%;
+  margin-top: 0.25rem;
+  border: none;
+  border-radius: 9px;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  font-weight: 800;
+  background: var(--blue);
+  color: #fff;
+  cursor: pointer;
+}
+
+#meta-hud .meta-account-panel button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+#meta-hud .meta-account-panel p {
+  margin: 0.55rem 0 0;
+  color: var(--mute);
+  font-size: 0.72rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
 #meta-hud .meta-chip {
   font-weight: 800;
   font-size: 0.78rem;

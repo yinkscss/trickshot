@@ -56,8 +56,9 @@ Set these in **GitHub → repo → Settings → Secrets and variables → Action
 | `RUN_SIGNING_SECRET` | Any strong random string — must match what the Edge Functions expect (`RUN_SIGNING_SECRET` in local `.env`) |
 | `MAGIC_SECRET_KEY` | Magic.link dashboard → your app → API Keys → Secret key (`sk_live_...`) |
 | `POWERUP_SHOP_ADDRESS` | Deployed `PowerupShop` contract address on Celo Sepolia (from `forge script` output or `contracts/deployments/`) |
+| `CONTINUE_PURCHASE_ADDRESS` | Deployed `ContinuePurchase` contract address on Celo Sepolia (from `contracts/deployments/`) |
 | `CELO_RPC_URL` | Your private Celo Sepolia RPC URL; public default: `https://forno.celo-sepolia.celo-testnet.org` |
-| `CELO_CHAIN_ID` | Optional — defaults to `44787` in the workflow |
+| `CELO_CHAIN_ID` | Optional — defaults to Celo Sepolia `11142220` in the workflow |
 
 ### For `smoke.yml`
 

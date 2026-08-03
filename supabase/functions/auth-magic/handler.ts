@@ -146,7 +146,7 @@ export async function handleAuthMagic(
           error: "no_wallet",
           detail:
             "Magic account has no provisioned wallet. " +
-            "Ensure Celo Sepolia is enabled in the Magic dashboard.",
+            "Ensure the configured Celo network is enabled in the Magic dashboard.",
         },
         { status: 401 },
       );

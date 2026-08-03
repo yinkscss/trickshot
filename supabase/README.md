@@ -302,7 +302,7 @@ POST /purchase-intent →   requireAuth()
                           INSERT purchase_intents   → intent row (pending)
                       ←   { intentId, sku, quantity, priceCents, expiresAt }
 
-<client broadcasts PowerupShop.buy(skuId, amount) on Celo Sepolia>
+<client broadcasts PowerupShop.buy(skuId, amount) on the configured Celo network>
 
 POST /purchase-confirm →  requireAuth()
 { intentId, txHash,       findExistingPurchase(txHash, logIndex) — idempotency
@@ -340,7 +340,7 @@ STACK_LOCK: `TOURNAMENT_ALLOWS_POWERUPS === false`. Challenges mode also bans po
 
 ### On-chain verification
 
-`purchase-confirm` fetches the tx receipt from Celo Sepolia via `eth_getTransactionReceipt` (one RPC call per confirm, no block indexer). The `PowerupPurchased` event at `logIndex` is decoded with viem and validated:
+`purchase-confirm` fetches the tx receipt from the configured Celo network via `eth_getTransactionReceipt` (one RPC call per confirm, no block indexer). The `PowerupPurchased` event at `logIndex` is decoded with viem and validated:
 
 | Field | Check |
 |---|---|
@@ -354,9 +354,9 @@ STACK_LOCK: `TOURNAMENT_ALLOWS_POWERUPS === false`. Challenges mode also bans po
 
 | Var | Used by | Purpose |
 |---|---|---|
-| `POWERUP_SHOP_ADDRESS` | `purchase-confirm` | Deployed `PowerupShop` contract address on Celo Sepolia |
-| `CELO_RPC_URL` | `purchase-confirm` | Celo Sepolia JSON-RPC endpoint |
-| `CELO_CHAIN_ID` | `purchase-confirm` | Optional — defaults to `44787` (Celo Alfajores/Sepolia) |
+| `POWERUP_SHOP_ADDRESS` | `purchase-confirm` | Deployed `PowerupShop` contract address on the configured Celo network |
+| `CELO_RPC_URL` | `purchase-confirm` | JSON-RPC endpoint for the configured Celo network |
+| `CELO_CHAIN_ID` | `purchase-confirm` | Optional — defaults to Celo Sepolia `11142220` |
 
 ---
 

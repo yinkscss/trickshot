@@ -73,7 +73,7 @@ export default {
       },
 
       async verifyReceipt(txHash, logIndex): Promise<ContinueReceiptVerification> {
-        const continueAddress = Deno.env.get("CONTINUE_PURCHASE_ADDRESS") || Deno.env.get("POWERUP_SHOP_ADDRESS") || "";
+        const continueAddress = Deno.env.get("CONTINUE_PURCHASE_ADDRESS") || "";
         const rpcUrl = Deno.env.get("CELO_RPC_URL") ?? "";
         if (!continueAddress || !rpcUrl) {
           throw new Error("CONTINUE_PURCHASE_ADDRESS or CELO_RPC_URL not configured");
