@@ -12,17 +12,16 @@
  *
  * Stack constraints:
  *  - `wallet=magic` — Magic.link is the identity provider; Supabase Auth is NOT
- *  - `chain=celo` / Sepolia 11142220 — wallet is Celo-provisioned by Magic
+ *  - `chain=celo` — wallet is Celo-provisioned by Magic
  *  - MAGIC_SECRET_KEY + SUPABASE_SERVICE_ROLE_KEY never reach this file
  *
  * Token lifetime: 1 hour (Alpha). No refresh — user re-logs via Magic.
  */
 
 import { Magic } from "magic-sdk";
+import { getCeloNetworkConfig } from "./network.js";
 
 const SESSION_KEY = "trickshot.session.v1";
-/** Celo Sepolia chain ID — locked in stack (`chain=celo`, testnet). */
-export const EXPECTED_CELO_CHAIN_ID = 11142220;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,7 +47,7 @@ export interface MagicRpcProvider {
 let _magic: Magic | null = null;
 
 /**
- * Lazily initialise the Magic SDK with the Celo Sepolia network config.
+ * Lazily initialise the Magic SDK with the configured Celo network.
  * Returns `null` when `VITE_MAGIC_PUBLISHABLE_KEY` is not set (local dev
  * without Magic configured).
  */
@@ -64,11 +63,11 @@ function initMagic(): Magic | null {
     return null;
   }
 
+  const network = getCeloNetworkConfig();
   _magic = new Magic(key, {
     network: {
-      rpcUrl: (import.meta.env.VITE_CELO_RPC_URL as string | undefined) ??
-        "https://forno.celo-sepolia.celo-testnet.org",
-      chainId: EXPECTED_CELO_CHAIN_ID,
+      rpcUrl: network.rpcUrl,
+      chainId: network.chainId,
     },
   });
   return _magic;
@@ -89,25 +88,13 @@ export function getMagicRpcProvider(): MagicRpcProvider | null {
 // ---------------------------------------------------------------------------
 
 /**
- * Development-time guard: logs a warning when the configured Celo chain ID
- * does not match the expected Sepolia testnet ID.
- *
- * Non-blocking — does not interrupt gameplay. Surfaced in the browser console
- * to alert developers who misconfigure the `.env` file. In production, CI
- * should enforce the correct chain ID.
+ * Validate the configured Celo network at app startup. Unsupported chain IDs
+ * fail fast instead of silently pointing a mainnet build at testnet.
  *
  * Call once at app startup (see `src/main.ts`).
  */
-export function guardCeloSepolia(): void {
-  const configured = Number(
-    (import.meta.env.VITE_CELO_CHAIN_ID as string | undefined) ?? "0",
-  );
-  if (configured !== EXPECTED_CELO_CHAIN_ID) {
-    console.warn(
-      `[auth] Celo chain ID mismatch: configured=${configured}, expected=${EXPECTED_CELO_CHAIN_ID} (Sepolia). ` +
-      "Update VITE_CELO_CHAIN_ID in .env.",
-    );
-  }
+export function guardCeloNetwork(): void {
+  getCeloNetworkConfig();
 }
 
 // ---------------------------------------------------------------------------

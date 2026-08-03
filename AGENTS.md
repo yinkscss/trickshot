@@ -1,46 +1,36 @@
-# Trick Shot Agent Guide
+# Agent Instructions
 
-## Start here
+## Repository Boundaries
 
-- Read [`docs/STACK_LOCK.md`](docs/STACK_LOCK.md) before changing architecture, dependencies, network targets, auth, monetization, or gameplay authority. It is the canonical decision record.
-- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) for workflow and stack constraints.
-- Prefer the README for the area being changed: [`apps/web`](apps/web/README.md), [`packages/shared`](packages/shared/README.md), [`packages/physics`](packages/physics/README.md), [`packages/logic`](packages/logic/README.md), [`supabase`](supabase/README.md), or [`contracts`](contracts/README.md).
+- This is an npm 10 workspace monorepo; use Node 20+ and run commands from the repository root.
+- `apps/web` is the real app: a Vite vanilla Canvas2D/PWA client whose entrypoint is `apps/web/src/main.ts` and gameplay loop is `PlayLoop`.
+- `packages/shared` owns shared types, constants, and the authoritative `getModeRules(mode)` policy matrix; do not scatter mode-specific checks.
+- `packages/logic` owns the pure run FSM, scoring, shot layout, challenge logic, and replay; `packages/physics` owns the DOM-free deterministic 2D integrator used by browser and replay.
+- `supabase/` is the canonical backend: migrations, seed data, and Edge Functions. `apps/api` is a deprecated Fastify stub; do not add features there.
+- `contracts/` is the Solidity/Foundry/OpenZeppelin surface and requires the declared git submodules. `infra/docker-compose.yml` is deprecated; use the Supabase CLI.
 
-## Repository shape
+## Source Of Truth
 
-- `apps/web`: vanilla TypeScript + Vite Canvas2D pitch client; gameplay rendering and input live here.
-- `packages/physics`: custom 2D integrator and flight/obstacle physics authority.
-- `packages/logic`: run state machine, scoring, seeded layouts, and replay logic authority.
-- `packages/shared`: shared types, mode rules, and economics constants. Use `getModeRules(mode)` instead of scattering mode checks.
-- `supabase`: canonical backend, Postgres migrations, and privileged Edge Functions.
-- `contracts`: Solidity + Foundry + OpenZeppelin contracts.
-- `apps/api`: deprecated Fastify health stub. Do not add backend features here; use Supabase Edge Functions.
+- `docs/STACK_LOCK.md` overrides the PRD, roadmap, and other docs. Do not swap Canvas2D, custom physics, Celo, Magic, Supabase, or Foundry without a lock review.
+- `CONTRIBUTING.md` requires surgical changes and says product-rule changes update the relevant docs; paid tournament continues are disabled and tournament powerups remain disabled.
+- Keep the playable pitch behavior: drag stretches the net, aim preview matches wall-bank flight, endless shots use at most one procedural obstacle, and dunk-to-next-shot uses the seamless transition.
 
-## Non-negotiable boundaries
+## Commands
 
-- Preserve the locked stack IDs in `docs/STACK_LOCK.md`; do not silently substitute frameworks or services.
-- The Alpha client is Canvas2D with `requestAnimationFrame`; Phaser and its Arcade/Matter physics are not the gameplay authority. Treat older documents or prompts that mention Phaser as stale unless the stack lock changes.
-- Supabase is the backend authority. Keep service-role keys, Magic secrets, and signing secrets inside Edge Functions; browser code may use only `VITE_*` public values and the anon key.
-- Keep tournament policy centralized: paid tournaments do not allow continues, and tournament powerups are banned.
-- Keep gameplay changes consistent with the playable pitch: zigzag progression, net drag, wall-bank preview parity, at most one procedural endless-mode obstacle per shot, seamless dunk handoff, and combo feedback.
+- Install with `npm ci` (or `npm install` when updating dependencies).
+- Package verification follows CI order: `npm run typecheck`, `npm test`, then `npm run test:edge`.
+- `npm run typecheck` covers shared, physics, logic, and web; it does not cover the deprecated API or Edge Functions.
+- `npm test` builds shared, physics, and logic before running their tests and web tests; it does not test the API.
+- `npm run test:edge` first runs `npm run build:edge`, then executes mocked Edge Function tests with `TSX_TSCONFIG_PATH=tsconfig.edge.json`; no Supabase instance or network is required.
+- Run one Edge test with `npm run build:edge && TSX_TSCONFIG_PATH=tsconfig.edge.json node --import tsx --test 'supabase/functions/runs-finish/runs-finish.test.ts'`.
+- Run focused package checks with `npm test -w @trickshot/physics`, `npm run smoke -w @trickshot/physics`, or the corresponding workspace name.
+- `npm run build:web` performs web typecheck, Vite build, and `scripts/verify-pwa.mjs`; it needs the `VITE_*` variables from `.env` (CI supplies placeholders).
+- For contracts, initialize submodules with `git submodule update --init --recursive`, then use `forge fmt --check`, `npm run contracts:build`, and `npm run contracts:test`.
 
-## Validation
+## Local And Operational Gotchas
 
-Use Node `>=20` and npm `10`. From the repository root, run the narrowest relevant check first, then broaden as needed:
-
-```bash
-npm run typecheck
-npm test
-npm run build
-npm run test:edge
-npm run contracts:test
-```
-
-For web changes, use `npm run build:web`; for shared/physics/logic changes, run their workspace `typecheck`, `test`, or `build` scripts. Supabase local integration work requires Docker and `npx supabase start`; migrations can be reset with `npm run supabase:reset`.
-
-## Change discipline
-
-- Make surgical changes in the owning package and update its README or the relevant product document when behavior or rules change.
-- Add or update focused tests for physics, run logic, Edge Functions, migrations, and contracts according to the surface changed.
-- Do not commit secrets, service-role credentials, Magic secret keys, or generated deployment artifacts.
-- When documentation conflicts, link back to `docs/STACK_LOCK.md` and follow it rather than trying to reconcile the conflicting document in code.
+- Start local Supabase with Docker via `npx supabase start`; use `npx supabase status` for connection values and `npm run supabase:reset` to reapply migrations plus `supabase/seed.sql`.
+- Copy `.env.example` to `.env`, but never commit or expose `MAGIC_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RUN_SIGNING_SECRET`, private keys, or other server secrets to Vite.
+- Keep physics/replay deterministic: use the shared `FIXED_DT` integrator, advance obstacle motion from simulation time, and use `stepProjectileSubsteps` for variable web frame times.
+- Do not hand-edit `apps/web/dist/sw.js`; change PWA caching in `apps/web/vite.config.ts` and rebuild.
+- A push to `master` deploys Supabase migrations, secrets, and all configured Edge Functions; the staging smoke workflow then checks `/health` and `/catalog`.

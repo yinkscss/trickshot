@@ -8,9 +8,20 @@ import {
   type Address,
 } from "viem";
 import { getMagicRpcProvider, getSession } from "./auth.js";
+import {
+  CELO_MAINNET_CHAIN_ID,
+  CELO_MAINNET_RPC_URL,
+  CELO_SEPOLIA_CHAIN_ID,
+  CELO_SEPOLIA_RPC_URL,
+  getCeloNetworkConfig,
+} from "./network.js";
 
-export const CELO_SEPOLIA_CHAIN_ID = 11142220;
-export const CELO_SEPOLIA_RPC_URL = "https://forno.celo-sepolia.celo-testnet.org";
+export {
+  CELO_MAINNET_CHAIN_ID,
+  CELO_MAINNET_RPC_URL,
+  CELO_SEPOLIA_CHAIN_ID,
+  CELO_SEPOLIA_RPC_URL,
+} from "./network.js";
 
 export const celoSepolia = defineChain({
   id: CELO_SEPOLIA_CHAIN_ID,
@@ -24,6 +35,18 @@ export const celoSepolia = defineChain({
   },
 });
 
+export const celoMainnet = defineChain({
+  id: CELO_MAINNET_CHAIN_ID,
+  name: "Celo Mainnet",
+  nativeCurrency: { name: "CELO", symbol: "CELO", decimals: 18 },
+  rpcUrls: {
+    default: { http: [CELO_MAINNET_RPC_URL] },
+  },
+  blockExplorers: {
+    default: { name: "CeloScan", url: "https://celoscan.io" },
+  },
+});
+
 export class WalletUnavailableError extends Error {
   constructor(message: string) {
     super(message);
@@ -34,27 +57,26 @@ export class WalletUnavailableError extends Error {
 export class WrongNetworkError extends Error {
   readonly chainId: number;
 
-  constructor(chainId: number) {
-    super(`Wallet is connected to chain ${chainId}; Celo Sepolia is required`);
+  constructor(chainId: number, expectedName = getCeloNetworkConfig().name) {
+    super(`Wallet is connected to chain ${chainId}; ${expectedName} is required`);
     this.name = "WrongNetworkError";
     this.chainId = chainId;
   }
 }
 
-function envValue(name: string): string | undefined {
-  const runtimeEnv = (import.meta as ImportMeta & {
-    env?: Record<string, string | undefined>;
-  }).env;
-  return runtimeEnv?.[name];
+export function getCeloRpcUrl(): string {
+  return getCeloNetworkConfig().rpcUrl;
 }
 
-export function getCeloRpcUrl(): string {
-  return envValue("VITE_CELO_RPC_URL") || CELO_SEPOLIA_RPC_URL;
+export function getConfiguredCeloChain() {
+  return getCeloNetworkConfig().chainId === CELO_MAINNET_CHAIN_ID
+    ? celoMainnet
+    : celoSepolia;
 }
 
 export function getPublicClient() {
   return createPublicClient({
-    chain: celoSepolia,
+    chain: getConfiguredCeloChain(),
     transport: http(getCeloRpcUrl()),
   });
 }
@@ -72,7 +94,7 @@ export function getWalletClient() {
   }
 
   return createWalletClient({
-    chain: celoSepolia,
+    chain: getConfiguredCeloChain(),
     transport: custom(provider),
   });
 }
@@ -90,11 +112,24 @@ export async function getConnectedChainId(): Promise<number> {
   return Number(await getWalletClient().getChainId());
 }
 
-export function assertCeloSepoliaChainId(chainId: number | bigint): void {
+export function assertCeloChainId(
+  chainId: number | bigint,
+  expectedChainId = getCeloNetworkConfig().chainId,
+): void {
   const normalized = Number(chainId);
-  if (normalized !== CELO_SEPOLIA_CHAIN_ID) {
-    throw new WrongNetworkError(normalized);
+  if (normalized !== expectedChainId) {
+    throw new WrongNetworkError(normalized, getCeloNetworkConfig().name);
   }
+}
+
+export function assertCeloSepoliaChainId(chainId: number | bigint): void {
+  if (Number(chainId) !== CELO_SEPOLIA_CHAIN_ID) {
+    throw new WrongNetworkError(Number(chainId), "Celo Sepolia");
+  }
+}
+
+export async function ensureCeloNetwork(): Promise<void> {
+  assertCeloChainId(await getConnectedChainId());
 }
 
 export async function ensureCeloSepolia(): Promise<void> {

@@ -78,7 +78,7 @@ import {
 } from "../meta";
 import { MetaHud } from "../ui/metaHud";
 import { login, logout } from "../services/auth";
-import { ensureCeloSepolia } from "../services/wallet";
+import { ensureCeloNetwork } from "../services/wallet";
 import { Music, Sfx, toggleMuted } from "../audio";
 import {
   DirectCanvasRenderer,
@@ -235,7 +235,7 @@ export class PlayLoop {
       onLogin: async (email) => {
         const session = await login(email);
         try {
-          await ensureCeloSepolia();
+          await ensureCeloNetwork();
           return session;
         } catch (error) {
           await logout();
