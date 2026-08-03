@@ -1,7 +1,7 @@
 /**
  * On-chain ContinuePurchased receipt verifier (issue #52).
  *
- * Fetches the tx receipt from Celo Sepolia and decodes the ContinuePurchased
+ * Fetches the tx receipt from the configured Celo network and decodes the ContinuePurchased
  * event at the given log index. Isolated for testability.
  *
  * ContinuePurchased event signature (ContinuePurchase.sol):
@@ -15,6 +15,10 @@
  */
 
 import type { ContinueReceiptVerification } from "./handler.ts";
+import {
+  celoChainName,
+  parseCeloChainId,
+} from "../_shared/celo-network.ts";
 
 const CONTINUE_PURCHASED_ABI = [
   {
@@ -42,11 +46,14 @@ export async function verifyContinueReceipt(
 ): Promise<ContinueReceiptVerification> {
   const { txHash, logIndex, continueAddress, rpcUrl } = params;
 
-  const { createPublicClient, http, decodeEventLog } = await import("viem");
-  const { celoAlfajores } = await import("viem/chains");
-
-  const chainId = parseInt(Deno.env.get("CELO_CHAIN_ID") ?? "44787", 10);
-  const chain = chainId === 44787 ? celoAlfajores : celoAlfajores;
+  const { createPublicClient, http, decodeEventLog, defineChain } = await import("viem");
+  const chainId = parseCeloChainId(Deno.env.get("CELO_CHAIN_ID"));
+  const chain = defineChain({
+    id: chainId,
+    name: celoChainName(chainId),
+    nativeCurrency: { name: "CELO", symbol: "CELO", decimals: 18 },
+    rpcUrls: { default: { http: [rpcUrl] } },
+  });
 
   const client = createPublicClient({
     chain,
@@ -55,6 +62,13 @@ export async function verifyContinueReceipt(
 
   let receipt: Awaited<ReturnType<typeof client.getTransactionReceipt>>;
   try {
+    const rpcChainId = await client.getChainId();
+    if (rpcChainId !== chainId) {
+      return {
+        ok: false,
+        reason: `RPC chain ID ${rpcChainId} does not match configured Celo chain ${chainId}`,
+      };
+    }
     receipt = await client.getTransactionReceipt({
       hash: txHash as `0x${string}`,
     });

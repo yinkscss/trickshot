@@ -2,7 +2,7 @@
  * continue-confirm business logic (issue #52).
  *
  * Verifies on-chain ContinuePurchased receipt from ContinuePurchase contract
- * on Celo Sepolia and credits continue entitlement for user / run.
+ * on the configured Celo network and credits continue entitlement for user / run.
  * Idempotent: duplicate confirm for the same (txHash, logIndex) returns 200 without double-crediting.
  * Legal & Mode enforcement: tournament mode always rejects (TOURNAMENT_ALLOWS_CONTINUES = false).
  *

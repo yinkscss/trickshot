@@ -274,7 +274,7 @@ Set both `VITE_MAGIC_PUBLISHABLE_KEY` for the browser and `MAGIC_SECRET_KEY` for
 
 ### Contract receipt verification uses the wrong network
 
-Use Celo Sepolia chain ID `11142220` for Alpha. Some older staging defaults still mention `44787`; check the active environment and function configuration against [`docs/STACK_LOCK.md`](./STACK_LOCK.md) before testing a purchase or continue confirmation.
+Use Celo Sepolia chain ID `11142220` for Alpha. Any environment using the obsolete Alfajores ID `44787` must be corrected before testing a purchase or continue confirmation.
 
 ## References
 
