@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "Trick Shot — precision chain-hoop arcade on Celo",
+  "license": "MIT",
   "workspaces": [
     "apps/*",
     "packages/*"
